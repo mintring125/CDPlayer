@@ -97,6 +97,9 @@ class AudioRepository @Inject constructor(
     suspend fun updateCoverArt(id: Long, coverArtPath: String?) =
         audioFileDao.updateCoverArt(id, coverArtPath)
 
+    suspend fun moveAlbumToType(albumName: String, type: AudioType) =
+        audioFileDao.updateTypeByAlbum(albumName, type.name)
+
     suspend fun deleteAudioFile(audioFile: AudioFile) =
         audioFileDao.delete(AudioFileEntity.fromDomain(audioFile))
 

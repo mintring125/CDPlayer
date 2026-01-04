@@ -208,4 +208,28 @@ class HomeViewModel @Inject constructor(
             clearSelection()
         }
     }
+
+    fun moveAlbumToAudiobook(album: AudioFile) {
+        viewModelScope.launch {
+            try {
+                if (album.album != null) {
+                    audioRepository.moveAlbumToType(album.album, AudioType.AUDIOBOOK)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "오디오북으로 이동 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
+
+    fun moveAlbumToMusic(album: AudioFile) {
+        viewModelScope.launch {
+            try {
+                if (album.album != null) {
+                    audioRepository.moveAlbumToType(album.album, AudioType.MUSIC)
+                }
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "음악으로 이동 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
 }

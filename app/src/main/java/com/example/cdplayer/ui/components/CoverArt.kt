@@ -67,16 +67,27 @@ fun PlaceholderCoverArt(
 fun LargeCoverArt(
     coverArtPath: String?,
     coverArtUri: String?,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    contentScale: ContentScale = ContentScale.Fit // Default to Fit for Large Cover Art
 ) {
     Box(
         modifier = modifier
             .clip(RoundedCornerShape(16.dp))
+            .background(MaterialTheme.colorScheme.surfaceVariant) // Add background for letterboxing
     ) {
-        CoverArt(
-            coverArtPath = coverArtPath,
-            coverArtUri = coverArtUri,
-            modifier = Modifier.fillMaxSize()
-        )
+        val imageModel = coverArtPath ?: coverArtUri
+        
+        if (imageModel != null) {
+            SubcomposeAsyncImage(
+                model = imageModel,
+                contentDescription = null,
+                modifier = Modifier.fillMaxSize(),
+                contentScale = contentScale,
+                loading = { PlaceholderCoverArt() },
+                error = { PlaceholderCoverArt() }
+            )
+        } else {
+            PlaceholderCoverArt(modifier = Modifier.fillMaxSize())
+        }
     }
 }

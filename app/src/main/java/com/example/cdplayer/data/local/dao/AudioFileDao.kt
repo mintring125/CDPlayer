@@ -76,6 +76,9 @@ interface AudioFileDao {
     @Query("UPDATE audio_files SET coverArtPath = :coverArtPath WHERE id = :id")
     suspend fun updateCoverArt(id: Long, coverArtPath: String?)
 
+    @Query("UPDATE audio_files SET type = :newType WHERE album = :albumName")
+    suspend fun updateTypeByAlbum(albumName: String, newType: String)
+
     @Delete
     suspend fun delete(audioFile: AudioFileEntity)
 

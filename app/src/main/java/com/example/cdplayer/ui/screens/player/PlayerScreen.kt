@@ -136,102 +136,205 @@ fun PlayerScreen(
             )
         }
     ) { paddingValues ->
-        Column(
+        androidx.compose.foundation.layout.BoxWithConstraints(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(paddingValues)
-                .padding(horizontal = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            Spacer(modifier = Modifier.height(24.dp))
+            val isLandscape = maxWidth > maxHeight
 
-            // Cover Art
-            LargeCoverArt(
-                coverArtPath = currentTrack?.coverArtPath,
-                coverArtUri = currentTrack?.coverArtUri,
-                modifier = Modifier
-                    .fillMaxWidth(0.85f)
-                    .aspectRatio(1f)
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
-
-            // Track Info
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.CenterHorizontally
-            ) {
-                Text(
-                    text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
-                    style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    textAlign = TextAlign.Center
-                )
-
-                Spacer(modifier = Modifier.height(8.dp))
-
-                Text(
-                    text = currentTrack?.displayArtist ?: "",
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-
-                if (currentTrack?.album != null) {
-                    Text(
-                        text = currentTrack.album,
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                }
-            }
-
-            // Bookmarks indicator
-            if (bookmarks.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(16.dp))
+            if (isLandscape) {
                 Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Bookmark,
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.primary
+                    // Cover Art (Left)
+                    Box(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        contentAlignment = Alignment.Center
+                    ) {
+                         LargeCoverArt(
+                            coverArtPath = currentTrack?.coverArtPath,
+                            coverArtUri = currentTrack?.coverArtUri,
+                            modifier = Modifier
+                                .fillMaxSize(0.8f) // Reduce size slightly for visual balance
+                                .aspectRatio(1f)
+                        )
+                    }
+                   
+                    Spacer(modifier = Modifier.size(24.dp))
+
+                    // Controls and Info (Right)
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxSize(),
+                        verticalArrangement = Arrangement.Center,
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                         // Track Info
+                        Text(
+                            text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = currentTrack?.displayArtist ?: "",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                        
+                        // Bookmarks indicator
+                        if (bookmarks.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(16.dp))
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Bookmark,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(16.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Text(
+                                    text = "${bookmarks.size}개의 북마크",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.primary
+                                )
+                            }
+                        }
+
+                        Spacer(modifier = Modifier.height(32.dp))
+
+                        PlaybackControls(
+                            isPlaying = playbackState.isPlaying,
+                            currentPosition = playbackState.currentPosition,
+                            duration = playbackState.duration,
+                            repeatMode = playbackState.repeatMode,
+                            shuffleEnabled = playbackState.shuffleEnabled,
+                            onPlayPause = { viewModel.playPause() },
+                            onPrevious = { viewModel.previous() },
+                            onNext = { viewModel.next() },
+                            onSeek = { viewModel.seekTo(it) },
+                            onRepeatModeChange = { viewModel.toggleRepeatMode() },
+                            onShuffleChange = { viewModel.toggleShuffle() },
+                            onSkipBackward = { viewModel.skipBackward() },
+                            onSkipForward = { viewModel.skipForward() }
+                        )
+                    }
+                }
+            } else {
+                // Portrait Layout
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = 24.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally
+                ) {
+                    Spacer(modifier = Modifier.height(24.dp))
+
+                    // Cover Art
+                    LargeCoverArt(
+                        coverArtPath = currentTrack?.coverArtPath,
+                        coverArtUri = currentTrack?.coverArtUri,
+                        modifier = Modifier
+                            .fillMaxWidth(0.85f)
+                            .aspectRatio(1f)
                     )
-                    Text(
-                        text = "${bookmarks.size}개의 북마크",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.primary
+
+                    Spacer(modifier = Modifier.height(32.dp))
+
+                    // Track Info
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Text(
+                            text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
+                            style = MaterialTheme.typography.headlineSmall,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = currentTrack?.displayArtist ?: "",
+                            style = MaterialTheme.typography.bodyLarge,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+
+                        if (currentTrack?.album != null) {
+                            Text(
+                                text = currentTrack.album,
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+
+                    // Bookmarks indicator
+                    if (bookmarks.isNotEmpty()) {
+                        Spacer(modifier = Modifier.height(16.dp))
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bookmark,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = "${bookmarks.size}개의 북마크",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.weight(1f))
+
+                    // Playback Controls
+                    PlaybackControls(
+                        isPlaying = playbackState.isPlaying,
+                        currentPosition = playbackState.currentPosition,
+                        duration = playbackState.duration,
+                        repeatMode = playbackState.repeatMode,
+                        shuffleEnabled = playbackState.shuffleEnabled,
+                        onPlayPause = { viewModel.playPause() },
+                        onPrevious = { viewModel.previous() },
+                        onNext = { viewModel.next() },
+                        onSeek = { viewModel.seekTo(it) },
+                        onRepeatModeChange = { viewModel.toggleRepeatMode() },
+                        onShuffleChange = { viewModel.toggleShuffle() },
+                        onSkipBackward = { viewModel.skipBackward() },
+                        onSkipForward = { viewModel.skipForward() }
                     )
+
+                    Spacer(modifier = Modifier.height(32.dp))
                 }
             }
-
-            Spacer(modifier = Modifier.weight(1f))
-
-            // Playback Controls
-            PlaybackControls(
-                isPlaying = playbackState.isPlaying,
-                currentPosition = playbackState.currentPosition,
-                duration = playbackState.duration,
-                repeatMode = playbackState.repeatMode,
-                shuffleEnabled = playbackState.shuffleEnabled,
-                onPlayPause = { viewModel.playPause() },
-                onPrevious = { viewModel.previous() },
-                onNext = { viewModel.next() },
-                onSeek = { viewModel.seekTo(it) },
-                onRepeatModeChange = { viewModel.toggleRepeatMode() },
-                onShuffleChange = { viewModel.toggleShuffle() },
-                onSkipBackward = { viewModel.skipBackward() },
-                onSkipForward = { viewModel.skipForward() }
-            )
-
-            Spacer(modifier = Modifier.height(32.dp))
         }
     }
 

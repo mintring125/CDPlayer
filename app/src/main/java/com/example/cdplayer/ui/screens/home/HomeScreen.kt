@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Refresh
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.clickable
@@ -27,6 +28,8 @@ import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -170,6 +173,9 @@ fun HomeScreen(
                                             viewModel.playTrack(audioFile)
                                             onNavigateToPlayer()
                                         }
+                                    },
+                                    onMoveToAudiobook = {
+                                        viewModel.moveAlbumToAudiobook(audioFile)
                                     }
                                 )
                             }
@@ -208,6 +214,9 @@ fun HomeScreen(
                                     },
                                     onLongClick = {
                                         viewModel.toggleSelection(audioFile.id)
+                                    },
+                                    onMoveToAudiobook = {
+                                        viewModel.moveAlbumToAudiobook(audioFile)
                                     },
                                     isSelectionMode = selectionState.isSelectionMode,
                                     isSelected = audioFile.id in selectionState.selectedIds
@@ -250,6 +259,9 @@ fun HomeScreen(
                                     },
                                     onLongClick = {
                                         viewModel.toggleSelection(audioFile.id)
+                                    },
+                                    onMoveToMusic = {
+                                        viewModel.moveAlbumToMusic(audioFile)
                                     },
                                     isSelectionMode = selectionState.isSelectionMode,
                                     isSelected = audioFile.id in selectionState.selectedIds,
@@ -351,6 +363,8 @@ fun AlbumCard(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     onLongClick: () -> Unit = {},
+    onMoveToAudiobook: (() -> Unit)? = null,
+    onMoveToMusic: (() -> Unit)? = null,
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     isAudiobook: Boolean = false
@@ -385,6 +399,8 @@ fun AlbumCard(
                         .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                 )
 
+
+
                 Column(
                     modifier = Modifier.padding(12.dp)
                 ) {
@@ -404,6 +420,55 @@ fun AlbumCard(
                     )
                 }
             }
+
+                // More Options Menu
+                if (!isSelectionMode && (onMoveToAudiobook != null || onMoveToMusic != null)) {
+                    var showMenu by remember { mutableStateOf(false) }
+                    
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd) // Now valid in BoxScope
+                            .padding(4.dp)
+                    ) {
+                        IconButton(
+                            onClick = { showMenu = true },
+                            modifier = Modifier
+                                .size(24.dp)
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.5f), androidx.compose.foundation.shape.CircleShape)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.MoreVert,
+                                contentDescription = "옵션",
+                                modifier = Modifier.size(16.dp),
+                                tint = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+
+                        DropdownMenu(
+                            expanded = showMenu,
+                            onDismissRequest = { showMenu = false }
+                        ) {
+                            if (onMoveToAudiobook != null) {
+                                DropdownMenuItem(
+                                    text = { Text("오디오북으로 이동") },
+                                    onClick = {
+                                        showMenu = false
+                                        onMoveToAudiobook()
+                                    }
+                                )
+                            }
+                            if (onMoveToMusic != null) {
+                                DropdownMenuItem(
+                                    text = { Text("음악으로 이동") },
+                                    onClick = {
+                                        showMenu = false
+                                        onMoveToMusic()
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
 
             if (isSelected) {
                 Box(
