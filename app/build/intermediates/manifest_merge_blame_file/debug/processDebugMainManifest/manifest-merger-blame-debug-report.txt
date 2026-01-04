@@ -1,0 +1,209 @@
+1<?xml version="1.0" encoding="utf-8"?>
+2<manifest xmlns:android="http://schemas.android.com/apk/res/android"
+3    package="com.example.cdplayer"
+4    android:versionCode="1"
+5    android:versionName="1.0" >
+6
+7    <uses-sdk
+8        android:minSdkVersion="26"
+9        android:targetSdkVersion="34" />
+10
+11    <!-- Audio permissions -->
+12    <uses-permission android:name="android.permission.READ_MEDIA_AUDIO" />
+12-->D:\CD Player\app\src\main\AndroidManifest.xml:6:5-75
+12-->D:\CD Player\app\src\main\AndroidManifest.xml:6:22-72
+13    <uses-permission
+13-->D:\CD Player\app\src\main\AndroidManifest.xml:7:5-8:38
+14        android:name="android.permission.READ_EXTERNAL_STORAGE"
+14-->D:\CD Player\app\src\main\AndroidManifest.xml:7:22-77
+15        android:maxSdkVersion="32" />
+15-->D:\CD Player\app\src\main\AndroidManifest.xml:8:9-35
+16    <uses-permission android:name="android.permission.MANAGE_EXTERNAL_STORAGE" />
+16-->D:\CD Player\app\src\main\AndroidManifest.xml:9:5-111
+16-->D:\CD Player\app\src\main\AndroidManifest.xml:9:22-79
+17
+18    <!-- Network permissions -->
+19    <uses-permission android:name="android.permission.INTERNET" />
+19-->D:\CD Player\app\src\main\AndroidManifest.xml:12:5-67
+19-->D:\CD Player\app\src\main\AndroidManifest.xml:12:22-64
+20    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+20-->D:\CD Player\app\src\main\AndroidManifest.xml:13:5-79
+20-->D:\CD Player\app\src\main\AndroidManifest.xml:13:22-76
+21
+22    <!-- Playback permissions -->
+23    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+23-->D:\CD Player\app\src\main\AndroidManifest.xml:16:5-77
+23-->D:\CD Player\app\src\main\AndroidManifest.xml:16:22-74
+24    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+24-->D:\CD Player\app\src\main\AndroidManifest.xml:17:5-92
+24-->D:\CD Player\app\src\main\AndroidManifest.xml:17:22-89
+25    <uses-permission android:name="android.permission.WAKE_LOCK" />
+25-->D:\CD Player\app\src\main\AndroidManifest.xml:18:5-68
+25-->D:\CD Player\app\src\main\AndroidManifest.xml:18:22-65
+26    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+26-->D:\CD Player\app\src\main\AndroidManifest.xml:19:5-77
+26-->D:\CD Player\app\src\main\AndroidManifest.xml:19:22-74
+27
+28    <permission
+28-->[androidx.core:core:1.12.0] C:\Users\mintk\.gradle\caches\8.13\transforms\d2913c7326ab8fc4eb039835e17b7308\transformed\core-1.12.0\AndroidManifest.xml:22:5-24:47
+29        android:name="com.example.cdplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION"
+29-->[androidx.core:core:1.12.0] C:\Users\mintk\.gradle\caches\8.13\transforms\d2913c7326ab8fc4eb039835e17b7308\transformed\core-1.12.0\AndroidManifest.xml:23:9-81
+30        android:protectionLevel="signature" />
+30-->[androidx.core:core:1.12.0] C:\Users\mintk\.gradle\caches\8.13\transforms\d2913c7326ab8fc4eb039835e17b7308\transformed\core-1.12.0\AndroidManifest.xml:24:9-44
+31
+32    <uses-permission android:name="com.example.cdplayer.DYNAMIC_RECEIVER_NOT_EXPORTED_PERMISSION" />
+32-->[androidx.core:core:1.12.0] C:\Users\mintk\.gradle\caches\8.13\transforms\d2913c7326ab8fc4eb039835e17b7308\transformed\core-1.12.0\AndroidManifest.xml:26:5-97
+32-->[androidx.core:core:1.12.0] C:\Users\mintk\.gradle\caches\8.13\transforms\d2913c7326ab8fc4eb039835e17b7308\transformed\core-1.12.0\AndroidManifest.xml:26:22-94
+33
+34    <application
+34-->D:\CD Player\app\src\main\AndroidManifest.xml:21:5-53:19
+35        android:name="com.example.cdplayer.CDPlayerApp"
+35-->D:\CD Player\app\src\main\AndroidManifest.xml:22:9-36
+36        android:allowBackup="true"
+36-->D:\CD Player\app\src\main\AndroidManifest.xml:23:9-35
+37        android:appComponentFactory="androidx.core.app.CoreComponentFactory"
+37-->[androidx.core:core:1.12.0] C:\Users\mintk\.gradle\caches\8.13\transforms\d2913c7326ab8fc4eb039835e17b7308\transformed\core-1.12.0\AndroidManifest.xml:28:18-86
+38        android:dataExtractionRules="@xml/data_extraction_rules"
+38-->D:\CD Player\app\src\main\AndroidManifest.xml:24:9-65
+39        android:debuggable="true"
+40        android:extractNativeLibs="false"
+41        android:fullBackupContent="@xml/backup_rules"
+41-->D:\CD Player\app\src\main\AndroidManifest.xml:25:9-54
+42        android:icon="@drawable/ic_launcher"
+42-->D:\CD Player\app\src\main\AndroidManifest.xml:26:9-45
+43        android:label="@string/app_name"
+43-->D:\CD Player\app\src\main\AndroidManifest.xml:27:9-41
+44        android:roundIcon="@drawable/ic_launcher"
+44-->D:\CD Player\app\src\main\AndroidManifest.xml:28:9-50
+45        android:supportsRtl="true"
+45-->D:\CD Player\app\src\main\AndroidManifest.xml:29:9-35
+46        android:testOnly="true"
+47        android:theme="@style/Theme.CDPlayer" >
+47-->D:\CD Player\app\src\main\AndroidManifest.xml:30:9-46
+48        <activity
+48-->D:\CD Player\app\src\main\AndroidManifest.xml:33:9-41:20
+49            android:name="com.example.cdplayer.MainActivity"
+49-->D:\CD Player\app\src\main\AndroidManifest.xml:34:13-41
+50            android:exported="true"
+50-->D:\CD Player\app\src\main\AndroidManifest.xml:35:13-36
+51            android:theme="@style/Theme.CDPlayer" >
+51-->D:\CD Player\app\src\main\AndroidManifest.xml:36:13-50
+52            <intent-filter>
+52-->D:\CD Player\app\src\main\AndroidManifest.xml:37:13-40:29
+53                <action android:name="android.intent.action.MAIN" />
+53-->D:\CD Player\app\src\main\AndroidManifest.xml:38:17-69
+53-->D:\CD Player\app\src\main\AndroidManifest.xml:38:25-66
+54
+55                <category android:name="android.intent.category.LAUNCHER" />
+55-->D:\CD Player\app\src\main\AndroidManifest.xml:39:17-77
+55-->D:\CD Player\app\src\main\AndroidManifest.xml:39:27-74
+56            </intent-filter>
+57        </activity>
+58
+59        <!-- Media Playback Service -->
+60        <service
+60-->D:\CD Player\app\src\main\AndroidManifest.xml:44:9-51:19
+61            android:name="com.example.cdplayer.player.PlaybackService"
+61-->D:\CD Player\app\src\main\AndroidManifest.xml:45:13-51
+62            android:exported="true"
+62-->D:\CD Player\app\src\main\AndroidManifest.xml:46:13-36
+63            android:foregroundServiceType="mediaPlayback" >
+63-->D:\CD Player\app\src\main\AndroidManifest.xml:47:13-58
+64            <intent-filter>
+64-->D:\CD Player\app\src\main\AndroidManifest.xml:48:13-50:29
+65                <action android:name="androidx.media3.session.MediaSessionService" />
+65-->D:\CD Player\app\src\main\AndroidManifest.xml:49:17-86
+65-->D:\CD Player\app\src\main\AndroidManifest.xml:49:25-83
+66            </intent-filter>
+67        </service>
+68
+69        <activity
+69-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\mintk\.gradle\caches\8.13\transforms\73223418cd5292507f3e4c2319f944f4\transformed\ui-tooling-release\AndroidManifest.xml:23:9-25:39
+70            android:name="androidx.compose.ui.tooling.PreviewActivity"
+70-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\mintk\.gradle\caches\8.13\transforms\73223418cd5292507f3e4c2319f944f4\transformed\ui-tooling-release\AndroidManifest.xml:24:13-71
+71            android:exported="true" />
+71-->[androidx.compose.ui:ui-tooling-android:1.5.4] C:\Users\mintk\.gradle\caches\8.13\transforms\73223418cd5292507f3e4c2319f944f4\transformed\ui-tooling-release\AndroidManifest.xml:25:13-36
+72        <activity
+72-->[androidx.compose.ui:ui-test-manifest:1.5.4] C:\Users\mintk\.gradle\caches\8.13\transforms\c1439f5fb1c66ad95b53a3f02c984848\transformed\ui-test-manifest-1.5.4\AndroidManifest.xml:23:9-25:39
+73            android:name="androidx.activity.ComponentActivity"
+73-->[androidx.compose.ui:ui-test-manifest:1.5.4] C:\Users\mintk\.gradle\caches\8.13\transforms\c1439f5fb1c66ad95b53a3f02c984848\transformed\ui-test-manifest-1.5.4\AndroidManifest.xml:24:13-63
+74            android:exported="true" />
+74-->[androidx.compose.ui:ui-test-manifest:1.5.4] C:\Users\mintk\.gradle\caches\8.13\transforms\c1439f5fb1c66ad95b53a3f02c984848\transformed\ui-test-manifest-1.5.4\AndroidManifest.xml:25:13-36
+75
+76        <provider
+76-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:24:9-32:20
+77            android:name="androidx.startup.InitializationProvider"
+77-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:25:13-67
+78            android:authorities="com.example.cdplayer.androidx-startup"
+78-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:26:13-68
+79            android:exported="false" >
+79-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:27:13-37
+80            <meta-data
+80-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:29:13-31:52
+81                android:name="androidx.emoji2.text.EmojiCompatInitializer"
+81-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:30:17-75
+82                android:value="androidx.startup" />
+82-->[androidx.emoji2:emoji2:1.4.0] C:\Users\mintk\.gradle\caches\8.13\transforms\2562a94a9263194050b03bdcc5e2ade7\transformed\emoji2-1.4.0\AndroidManifest.xml:31:17-49
+83            <meta-data
+83-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\mintk\.gradle\caches\8.13\transforms\64e433c5271c2f740916074ea972f2a0\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:29:13-31:52
+84                android:name="androidx.lifecycle.ProcessLifecycleInitializer"
+84-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\mintk\.gradle\caches\8.13\transforms\64e433c5271c2f740916074ea972f2a0\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:30:17-78
+85                android:value="androidx.startup" />
+85-->[androidx.lifecycle:lifecycle-process:2.6.2] C:\Users\mintk\.gradle\caches\8.13\transforms\64e433c5271c2f740916074ea972f2a0\transformed\lifecycle-process-2.6.2\AndroidManifest.xml:31:17-49
+86            <meta-data
+86-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:29:13-31:52
+87                android:name="androidx.profileinstaller.ProfileInstallerInitializer"
+87-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:30:17-85
+88                android:value="androidx.startup" />
+88-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:31:17-49
+89        </provider>
+90
+91        <service
+91-->[androidx.room:room-runtime:2.6.1] C:\Users\mintk\.gradle\caches\8.13\transforms\bdc2c710ce4c4ffb8c94517049ff96bd\transformed\room-runtime-2.6.1\AndroidManifest.xml:24:9-28:63
+92            android:name="androidx.room.MultiInstanceInvalidationService"
+92-->[androidx.room:room-runtime:2.6.1] C:\Users\mintk\.gradle\caches\8.13\transforms\bdc2c710ce4c4ffb8c94517049ff96bd\transformed\room-runtime-2.6.1\AndroidManifest.xml:25:13-74
+93            android:directBootAware="true"
+93-->[androidx.room:room-runtime:2.6.1] C:\Users\mintk\.gradle\caches\8.13\transforms\bdc2c710ce4c4ffb8c94517049ff96bd\transformed\room-runtime-2.6.1\AndroidManifest.xml:26:13-43
+94            android:exported="false" />
+94-->[androidx.room:room-runtime:2.6.1] C:\Users\mintk\.gradle\caches\8.13\transforms\bdc2c710ce4c4ffb8c94517049ff96bd\transformed\room-runtime-2.6.1\AndroidManifest.xml:27:13-37
+95
+96        <receiver
+96-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:34:9-52:20
+97            android:name="androidx.profileinstaller.ProfileInstallReceiver"
+97-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:35:13-76
+98            android:directBootAware="false"
+98-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:36:13-44
+99            android:enabled="true"
+99-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:37:13-35
+100            android:exported="true"
+100-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:38:13-36
+101            android:permission="android.permission.DUMP" >
+101-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:39:13-57
+102            <intent-filter>
+102-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:40:13-42:29
+103                <action android:name="androidx.profileinstaller.action.INSTALL_PROFILE" />
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:17-91
+103-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:41:25-88
+104            </intent-filter>
+105            <intent-filter>
+105-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:43:13-45:29
+106                <action android:name="androidx.profileinstaller.action.SKIP_FILE" />
+106-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:17-85
+106-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:44:25-82
+107            </intent-filter>
+108            <intent-filter>
+108-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:46:13-48:29
+109                <action android:name="androidx.profileinstaller.action.SAVE_PROFILE" />
+109-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:17-88
+109-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:47:25-85
+110            </intent-filter>
+111            <intent-filter>
+111-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:49:13-51:29
+112                <action android:name="androidx.profileinstaller.action.BENCHMARK_OPERATION" />
+112-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:17-95
+112-->[androidx.profileinstaller:profileinstaller:1.3.1] C:\Users\mintk\.gradle\caches\8.13\transforms\00faba4a9ade66bd657f274b57e9ab81\transformed\profileinstaller-1.3.1\AndroidManifest.xml:50:25-92
+113            </intent-filter>
+114        </receiver>
+115    </application>
+116
+117</manifest>
