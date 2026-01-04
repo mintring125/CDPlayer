@@ -28,7 +28,7 @@ private val DarkColorScheme = darkColorScheme(
     surface = CDSurface,
     onSurface = CDOnSurface,
     surfaceVariant = CDSurfaceVariant,
-    onSurfaceVariant = Color(0xFFB3B3B3)
+    onSurfaceVariant = Color(0xFFC7B8D6) // Light purple-grey for text on variants
 )
 
 private val LightColorScheme = lightColorScheme(
@@ -42,8 +42,8 @@ private val LightColorScheme = lightColorScheme(
     onBackground = CDOnBackgroundLight,
     surface = CDSurfaceLight,
     onSurface = CDOnSurfaceLight,
-    surfaceVariant = Color(0xFFE7E7E7),
-    onSurfaceVariant = Color(0xFF535353)
+    surfaceVariant = Color(0xFFF0EBF5),   // Very light purple-grey
+    onSurfaceVariant = Color(0xFF5E506B)
 )
 
 @Composable

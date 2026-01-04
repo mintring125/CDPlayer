@@ -45,6 +45,8 @@ fun AudioItem(
     onShowInfo: (() -> Unit)? = null,
     onEditMetadata: (() -> Unit)? = null,
     onRemoveFromPlaylist: (() -> Unit)? = null,
+    onMoveToMusic: (() -> Unit)? = null,
+    onMoveToAudiobook: (() -> Unit)? = null,
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onToggleSelection: () -> Unit = {}
@@ -145,7 +147,7 @@ fun AudioItem(
         )
 
         // More options
-        if (onAddToQueue != null || onAddToPlaylist != null || onShowInfo != null || onEditMetadata != null || onRemoveFromPlaylist != null) {
+        if (onAddToQueue != null || onAddToPlaylist != null || onShowInfo != null || onEditMetadata != null || onRemoveFromPlaylist != null || onMoveToMusic != null || onMoveToAudiobook != null) {
             IconButton(onClick = { showMenu = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
@@ -196,6 +198,24 @@ fun AudioItem(
                 onShowInfo?.let {
                     DropdownMenuItem(
                         text = { Text("정보 보기") },
+                        onClick = {
+                            showMenu = false
+                            it()
+                        }
+                    )
+                }
+                onMoveToMusic?.let {
+                    DropdownMenuItem(
+                        text = { Text("음악으로 이동") },
+                        onClick = {
+                            showMenu = false
+                            it()
+                        }
+                    )
+                }
+                onMoveToAudiobook?.let {
+                    DropdownMenuItem(
+                        text = { Text("오디오북으로 이동") },
                         onClick = {
                             showMenu = false
                             it()

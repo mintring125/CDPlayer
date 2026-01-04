@@ -12,25 +12,33 @@ val PurpleGrey40 = Color(0xFF625b71)
 val Pink40 = Color(0xFF7D5260)
 
 // CD Player Theme Colors
-val CDPrimary = Color(0xFF1DB954)  // Spotify-like green
-val CDPrimaryVariant = Color(0xFF1ED760)
-val CDSecondary = Color(0xFF535353)
-val CDBackground = Color(0xFF121212)
-val CDSurface = Color(0xFF282828)
-val CDSurfaceVariant = Color(0xFF404040)
+// Sophisticated Pink/Purple Theme for 2nd Grade Girl
+val PrimaryPink = Color(0xFFE04F80)       // Vibrant but sophisticated Pink
+val PrimaryPurple = Color(0xFF9D4EDD)     // Rich Purple
+val DarkPurpleBackground = Color(0xFF201A24) // Softer, greyer purple background
+val DarkSurface = Color(0xFF2E2638)       // Softer surface
+val DarkSurfaceVariant = Color(0xFF453C52) // Lighter variant
+
+// CD Player Theme Colors - Mapped to new palette
+val CDPrimary = PrimaryPink
+val CDPrimaryVariant = PrimaryPurple
+val CDSecondary = Color(0xFFC77DFF)       // Light Lilac
+val CDBackground = DarkPurpleBackground
+val CDSurface = DarkSurface
+val CDSurfaceVariant = DarkSurfaceVariant
 val CDOnPrimary = Color.White
 val CDOnSecondary = Color.White
-val CDOnBackground = Color.White
-val CDOnSurface = Color.White
+val CDOnBackground = Color(0xFFEAE0F5)    // Off-white with purple tint
+val CDOnSurface = Color(0xFFEAE0F5)
 
-// Light theme colors
-val CDPrimaryLight = Color(0xFF1DB954)
-val CDBackgroundLight = Color(0xFFF5F5F5)
+// Light theme colors (Complementary)
+val CDPrimaryLight = PrimaryPink
+val CDBackgroundLight = Color(0xFFFDF7FA) // Very light pinkish white
 val CDSurfaceLight = Color.White
-val CDOnBackgroundLight = Color(0xFF121212)
-val CDOnSurfaceLight = Color(0xFF121212)
+val CDOnBackgroundLight = Color(0xFF2D2033)
+val CDOnSurfaceLight = Color(0xFF2D2033)
 
 // Player colors
-val PlayerBackground = Color(0xFF181818)
-val PlayerSeekBar = Color(0xFFB3B3B3)
+val PlayerBackground = Color(0xFF1A1520)
+val PlayerSeekBar = Color(0xFF5E506B)
 val PlayerSeekBarActive = CDPrimary

@@ -93,4 +93,18 @@ class LibraryViewModel @Inject constructor(
             playlistRepository.deletePlaylist(playlistId)
         }
     }
+
+    fun moveAlbumToType(album: AudioFile, type: com.example.cdplayer.domain.model.AudioType) {
+        viewModelScope.launch {
+            if (album.album != null) {
+                audioRepository.moveAlbumToType(album.album, type)
+            }
+        }
+    }
+
+    fun moveAlbumToType(albumName: String, type: com.example.cdplayer.domain.model.AudioType) {
+        viewModelScope.launch {
+            audioRepository.moveAlbumToType(albumName, type)
+        }
+    }
 }

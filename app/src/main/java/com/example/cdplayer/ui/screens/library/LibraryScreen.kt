@@ -24,12 +24,16 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlaylistPlay
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -40,6 +44,9 @@ import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -132,7 +139,8 @@ fun LibraryScreen(
                             onNavigateToPlayer()
                         },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onEditMetadata = { onNavigateToEditMetadata(it.id) }
+                        onEditMetadata = { onNavigateToEditMetadata(it.id) },
+                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.AUDIOBOOK) }
                     )
                 }
                 LibraryTab.AUDIOBOOKS -> {
@@ -144,7 +152,8 @@ fun LibraryScreen(
                             onNavigateToPlayer()
                         },
                         onAddToQueue = { viewModel.addToQueue(it) },
-                        onEditMetadata = { onNavigateToEditMetadata(it.id) }
+                        onEditMetadata = { onNavigateToEditMetadata(it.id) },
+                        onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) }
                     )
                 }
                 LibraryTab.ARTISTS -> {
@@ -158,7 +167,9 @@ fun LibraryScreen(
                     GridList(
                         items = allAlbums,
                         icon = Icons.Default.Album,
-                        onItemClick = onNavigateToAlbum
+                        onItemClick = onNavigateToAlbum,
+                        onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) },
+                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.AUDIOBOOK) }
                     )
                 }
                 LibraryTab.PLAYLISTS -> {
@@ -178,7 +189,9 @@ fun TrackList(
     currentTrackId: Long?,
     onTrackClick: (Int) -> Unit,
     onAddToQueue: (AudioFile) -> Unit,
-    onEditMetadata: (AudioFile) -> Unit
+    onEditMetadata: (AudioFile) -> Unit,
+    onMoveToMusic: ((AudioFile) -> Unit)? = null,
+    onMoveToAudiobook: ((AudioFile) -> Unit)? = null
 ) {
     if (tracks.isEmpty()) {
         EmptyState(
@@ -195,7 +208,9 @@ fun TrackList(
                     onClick = { onTrackClick(index) },
                     isPlaying = currentTrackId == tracks[index].id,
                     onAddToQueue = { onAddToQueue(tracks[index]) },
-                    onEditMetadata = { onEditMetadata(tracks[index]) }
+                    onEditMetadata = { onEditMetadata(tracks[index]) },
+                    onMoveToMusic = onMoveToMusic?.let { handler -> { handler(tracks[index]) } },
+                    onMoveToAudiobook = onMoveToAudiobook?.let { handler -> { handler(tracks[index]) } }
                 )
             }
         }
@@ -207,7 +222,9 @@ fun TrackList(
 fun GridList(
     items: List<String>,
     icon: ImageVector,
-    onItemClick: (String) -> Unit
+    onItemClick: (String) -> Unit,
+    onMoveToMusic: ((String) -> Unit)? = null,
+    onMoveToAudiobook: ((String) -> Unit)? = null
 ) {
     if (items.isEmpty()) {
         EmptyState(
@@ -229,25 +246,71 @@ fun GridList(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant
                     )
                 ) {
-                    Row(
+                    Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(16.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            .padding(12.dp)
                     ) {
-                        Icon(
-                            imageVector = icon,
-                            contentDescription = null,
-                            modifier = Modifier.size(40.dp),
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Text(
-                            text = item,
-                            style = MaterialTheme.typography.bodyLarge,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis
-                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Icon(
+                                imageVector = icon,
+                                contentDescription = null,
+                                modifier = Modifier.size(48.dp),
+                                tint = MaterialTheme.colorScheme.primary
+                            )
+                            Text(
+                                text = item,
+                                style = MaterialTheme.typography.bodyMedium,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.fillMaxWidth()
+                            )
+                        }
+
+                        // More options for Grid items (Albums)
+                        if (onMoveToMusic != null || onMoveToAudiobook != null) {
+                            var showMenu by remember { androidx.compose.runtime.mutableStateOf(false) }
+                            Box(modifier = Modifier.align(Alignment.TopEnd)) {
+                                IconButton(
+                                    onClick = { showMenu = true },
+                                    modifier = Modifier.size(24.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.MoreVert,
+                                        contentDescription = "더보기",
+                                        modifier = Modifier.size(16.dp)
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showMenu,
+                                    onDismissRequest = { showMenu = false }
+                                ) {
+                                    onMoveToMusic?.let {
+                                        DropdownMenuItem(
+                                            text = { Text("음악으로 이동") },
+                                            onClick = {
+                                                showMenu = false
+                                                it(item)
+                                            }
+                                        )
+                                    }
+                                    onMoveToAudiobook?.let {
+                                        DropdownMenuItem(
+                                            text = { Text("오디오북으로 이동") },
+                                            onClick = {
+                                                showMenu = false
+                                                it(item)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
             }
