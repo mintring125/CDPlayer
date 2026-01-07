@@ -57,6 +57,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onDestroy() {
         super.onDestroy()
-        musicPlayerManager.release()
+        if (!isChangingConfigurations) {
+            musicPlayerManager.release()
+        }
     }
 }

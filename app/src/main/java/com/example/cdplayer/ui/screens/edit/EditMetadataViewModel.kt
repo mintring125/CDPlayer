@@ -185,13 +185,13 @@ class EditMetadataViewModel @Inject constructor(
             try {
                 // 0. 커버 아트 준비
                 var artworkFile: File? = null
+                val tempMap = File(context.cacheDir, "artwork_temp") // 다운로드용 임시 폴더
+                if (!tempMap.exists()) tempMap.mkdirs()
                 
                 // URL은 입력되었지만 아직 적용(다운로드)되지 않은 경우 자동 처리
                 if (state.selectedCoverArtUri == null && state.coverArtUrl.isNotBlank()) {
                      try {
                         val url = state.coverArtUrl
-                        val tempMap = File(context.cacheDir, "artwork_temp")
-                        if (!tempMap.exists()) tempMap.mkdirs()
                         val tempFile = File(tempMap, "art_${System.currentTimeMillis()}.jpg")
                         
                         // HttpURLConnection 사용
@@ -217,8 +217,6 @@ class EditMetadataViewModel @Inject constructor(
                         
                         if (tempFile.exists() && tempFile.length() > 0) {
                             artworkFile = tempFile
-                            // UI 갱신을 위해 업데이트 (선택사항, 어차피 닫히겠지만)
-                            _uiState.update { it.copy(selectedCoverArtUri = android.net.Uri.fromFile(tempFile)) }
                         } else {
                              // 파일이 생성되지 않았거나 크기가 0인 경우
                              throw java.io.IOException("File download failed or empty")
@@ -230,23 +228,52 @@ class EditMetadataViewModel @Inject constructor(
                         return@launch
                     }
                 } else if (state.selectedCoverArtUri != null) {
-                    // 선택된 URI 처리
+                    // 선택된 URI 처리 (이미 다운로드되었거나 갤러리에서 선택됨)
                     try {
-                        val tempMap = File(context.cacheDir, "artwork_temp")
-                        if (!tempMap.exists()) tempMap.mkdirs()
-                        val tempFile = File(tempMap, "art_${System.currentTimeMillis()}.jpg")
-                        
-                        context.contentResolver.openInputStream(state.selectedCoverArtUri)?.use { input ->
-                            java.io.FileOutputStream(tempFile).use { output ->
-                                input.copyTo(output)
+                        // URI가 이미 파일 스킴이고 tempMap에 있다면 그대로 사용, 아니면 복사
+                        if (state.selectedCoverArtUri.scheme == "file") {
+                             val file = File(state.selectedCoverArtUri.path!!)
+                             artworkFile = file
+                        } else {
+                            val tempFile = File(tempMap, "art_${System.currentTimeMillis()}.jpg")
+                            context.contentResolver.openInputStream(state.selectedCoverArtUri)?.use { input ->
+                                java.io.FileOutputStream(tempFile).use { output ->
+                                    input.copyTo(output)
+                                }
                             }
-                        }
-                        if (tempFile.exists() && tempFile.length() > 0) {
-                            artworkFile = tempFile
+                            if (tempFile.exists() && tempFile.length() > 0) {
+                                artworkFile = tempFile
+                            }
                         }
                     } catch (e: Exception) {
                         e.printStackTrace()
                          _uiState.update { it.copy(isSaving = false, error = "이미지 처리 실패: ${e.message}") }
+                        return@launch
+                    }
+                }
+
+                // *** 중요: 이미지를 내부 저장소(filesDir)로 영구 저장 ***
+                var persistentUriString: String? = audioFile.coverArtUri
+                
+                if (artworkFile != null && artworkFile.exists()) {
+                    try {
+                        // cover_art 폴더 생성
+                        val coversDir = File(context.filesDir, "cover_art")
+                        if (!coversDir.exists()) coversDir.mkdirs()
+                        
+                        // 고유 파일명 생성 (ID + Timestamp)
+                        val persistentFile = File(coversDir, "cover_${audioFile.id}_${System.currentTimeMillis()}.jpg")
+                        
+                        // 임시 파일을 영구 위치로 복사
+                        artworkFile.copyTo(persistentFile, overwrite = true)
+                        
+                        persistentUriString = android.net.Uri.fromFile(persistentFile).toString()
+                        
+                        // 기존 임시 파일 삭제 (선택사항)
+                        // artworkFile.delete() 
+                    } catch (e: Exception) {
+                        e.printStackTrace()
+                         _uiState.update { it.copy(isSaving = false, error = "이미지 저장 실패: ${e.message}") }
                         return@launch
                     }
                 }
@@ -291,7 +318,6 @@ class EditMetadataViewModel @Inject constructor(
                 }
 
                 // 3. DB 업데이트
-                // 커버 아트 업데이트 시 UI 반영을 위해 coverArtPath를 업데이트된 파일 경로로 바꾸거나 null로 초기화하여 재로딩 유도 가능
                 val updatedAudioFile = audioFile.copy(
                     title = state.title,
                     artist = state.artist.takeIf { it.isNotBlank() },
@@ -300,8 +326,8 @@ class EditMetadataViewModel @Inject constructor(
                     year = state.year.toIntOrNull(),
                     trackNumber = state.trackNumber.toIntOrNull(),
                     path = newPath,
-                    // 간단히 기존 값 유지 (MediaStore 갱신 전까지)
-                    coverArtUri = if (artworkFile != null) state.selectedCoverArtUri.toString() else audioFile.coverArtUri
+                    // 영구 저장된 URI 사용
+                    coverArtUri = persistentUriString
                 )
 
                 audioRepository.updateAudioFile(updatedAudioFile)
