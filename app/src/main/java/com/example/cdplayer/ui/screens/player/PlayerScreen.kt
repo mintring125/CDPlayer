@@ -23,9 +23,11 @@ import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Divider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -49,8 +51,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.filled.Search
+import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
-import com.example.cdplayer.domain.model.Bookmark
 import com.example.cdplayer.ui.components.AudioItemCompact
 import com.example.cdplayer.ui.components.LargeCoverArt
 import com.example.cdplayer.ui.components.PlaybackControls
@@ -67,11 +72,11 @@ fun PlayerScreen(
     val currentTrack = playbackState.currentTrack
 
     var showMenu by remember { mutableStateOf(false) }
+    var searchQuery by remember { mutableStateOf("") }
 
     Scaffold(
         topBar = {
             TopAppBar(
-                title = { },
                 navigationIcon = {
                     IconButton(onClick = onNavigateBack) {
                         Icon(
@@ -79,6 +84,49 @@ fun PlayerScreen(
                             contentDescription = "닫기"
                         )
                     }
+                },
+                title = {
+                    // Dictionary Search in Header
+                    OutlinedTextField(
+                        value = searchQuery,
+                        onValueChange = { searchQuery = it },
+                        placeholder = { Text("영어 단어 검색", style = MaterialTheme.typography.bodyMedium) },
+                        singleLine = true,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp),
+                        textStyle = MaterialTheme.typography.bodyMedium,
+                        trailingIcon = {
+                            if (uiState.isDictionaryLoading) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(18.dp),
+                                    strokeWidth = 2.dp
+                                )
+                            } else {
+                                IconButton(
+                                    onClick = {
+                                        if (searchQuery.isNotBlank()) {
+                                            viewModel.searchWord(searchQuery)
+                                        }
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Search,
+                                        contentDescription = "검색",
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        },
+                        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                        keyboardActions = KeyboardActions(
+                            onSearch = {
+                                if (searchQuery.isNotBlank()) {
+                                    viewModel.searchWord(searchQuery)
+                                }
+                            }
+                        )
+                    )
                 },
                 actions = {
                     IconButton(onClick = { viewModel.showQueueSheet() }) {
@@ -375,6 +423,31 @@ fun PlayerScreen(
             )
         }
     }
+
+    // Dictionary Result Dialog
+    uiState.dictionaryResult?.let { result ->
+        when (result) {
+            is DictionaryResult.Translation -> {
+                TranslationResultDialog(
+                    original = result.original,
+                    translated = result.translated,
+                    onDismiss = { viewModel.clearDictionaryResult() }
+                )
+            }
+            is DictionaryResult.Error -> {
+                AlertDialog(
+                    onDismissRequest = { viewModel.clearDictionaryResult() },
+                    title = { Text("검색 결과") },
+                    text = { Text(result.message) },
+                    confirmButton = {
+                        TextButton(onClick = { viewModel.clearDictionaryResult() }) {
+                            Text("확인")
+                        }
+                    }
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -518,3 +591,55 @@ fun QueueSheet(
         Spacer(modifier = Modifier.height(32.dp))
     }
 }
+
+@Composable
+fun TranslationResultDialog(
+    original: String,
+    translated: String,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("번역 결과") },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // 원문
+                Text(
+                    text = "원문",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = original,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+                Divider()
+                Spacer(modifier = Modifier.height(16.dp))
+
+                // 번역
+                Text(
+                    text = "번역",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+                Spacer(modifier = Modifier.height(4.dp))
+                Text(
+                    text = translated,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기")
+            }
+        }
+    )
+}
+

@@ -7,6 +7,8 @@ import com.example.cdplayer.data.local.dao.AudioFileDao
 import com.example.cdplayer.data.local.dao.BookmarkDao
 import com.example.cdplayer.data.local.dao.PlaylistDao
 import com.example.cdplayer.data.remote.api.CoverArtArchiveApi
+import com.example.cdplayer.data.remote.api.DictionaryApi
+import com.example.cdplayer.data.remote.api.GoogleTranslateApi
 import com.example.cdplayer.data.remote.api.GoogleBooksApi
 import com.example.cdplayer.data.remote.api.LastFmApi
 import com.example.cdplayer.data.remote.api.MusicBrainzApi
@@ -116,6 +118,27 @@ object AppModule {
             .addConverterFactory(GsonConverterFactory.create())
             .build()
             .create(CoverArtArchiveApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideDictionaryApi(okHttpClient: OkHttpClient): DictionaryApi {
+        return Retrofit.Builder()
+            .baseUrl(DictionaryApi.BASE_URL)
+            .client(okHttpClient)
+            .addConverterFactory(GsonConverterFactory.create())
+            .build()
+            .create(DictionaryApi::class.java)
+    }
+
+    @Provides
+    @Singleton
+    fun provideGoogleTranslateApi(okHttpClient: OkHttpClient): GoogleTranslateApi {
+        return Retrofit.Builder()
+            .baseUrl(GoogleTranslateApi.BASE_URL)
+            .client(okHttpClient)
+            .build()
+            .create(GoogleTranslateApi::class.java)
     }
 
     // Utils

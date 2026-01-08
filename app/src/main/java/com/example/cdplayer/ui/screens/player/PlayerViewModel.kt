@@ -3,6 +3,7 @@ package com.example.cdplayer.ui.screens.player
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.example.cdplayer.data.repository.BookmarkRepository
+import com.example.cdplayer.data.repository.DictionaryRepository
 import com.example.cdplayer.domain.model.Bookmark
 import com.example.cdplayer.player.MusicPlayerManager
 import com.example.cdplayer.player.PlaybackState
@@ -21,13 +22,22 @@ data class PlayerUiState(
     val showSpeedDialog: Boolean = false,
     val showSleepTimerDialog: Boolean = false,
     val showQueueSheet: Boolean = false,
-    val showBookmarkDialog: Boolean = false
+    val showBookmarkDialog: Boolean = false,
+    val showDictionaryDialog: Boolean = false,
+    val dictionaryResult: DictionaryResult? = null,
+    val isDictionaryLoading: Boolean = false
 )
+
+sealed class DictionaryResult {
+    data class Translation(val original: String, val translated: String) : DictionaryResult()
+    data class Error(val message: String) : DictionaryResult()
+}
 
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val musicPlayerManager: MusicPlayerManager,
-    private val bookmarkRepository: BookmarkRepository
+    private val bookmarkRepository: BookmarkRepository,
+    private val dictionaryRepository: DictionaryRepository
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(PlayerUiState())
@@ -147,5 +157,43 @@ class PlayerViewModel @Inject constructor(
 
     fun seekToBookmark(bookmark: Bookmark) {
         seekTo(bookmark.position)
+    }
+
+    // Dictionary
+    fun showDictionaryDialog() {
+        _uiState.value = _uiState.value.copy(showDictionaryDialog = true)
+    }
+
+    fun hideDictionaryDialog() {
+        _uiState.value = _uiState.value.copy(
+            showDictionaryDialog = false,
+            dictionaryResult = null,
+            isDictionaryLoading = false
+        )
+    }
+
+    fun searchWord(text: String) {
+        if (text.isBlank()) return
+
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(
+                isDictionaryLoading = true,
+                dictionaryResult = null
+            )
+
+            // 단어든 문장이든 모두 Google 번역
+            val result = dictionaryRepository.translate(text)
+            _uiState.value = _uiState.value.copy(
+                isDictionaryLoading = false,
+                dictionaryResult = result.fold(
+                    onSuccess = { DictionaryResult.Translation(it.first, it.second) },
+                    onFailure = { DictionaryResult.Error(it.message ?: "알 수 없는 오류") }
+                )
+            )
+        }
+    }
+
+    fun clearDictionaryResult() {
+        _uiState.value = _uiState.value.copy(dictionaryResult = null)
     }
 }
