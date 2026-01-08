@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.background
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Bookmark
@@ -86,21 +88,35 @@ fun PlayerScreen(
                     }
                 },
                 title = {
-                    // Dictionary Search in Header
+                    // Dictionary Search in Header - Kid-friendly rounded style
                     OutlinedTextField(
                         value = searchQuery,
                         onValueChange = { searchQuery = it },
-                        placeholder = { Text("영어 단어 검색", style = MaterialTheme.typography.bodyMedium) },
+                        placeholder = {
+                            Text(
+                                "영어 단어 검색",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f)
+                            )
+                        },
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
                             .height(48.dp),
                         textStyle = MaterialTheme.typography.bodyMedium,
+                        shape = RoundedCornerShape(24.dp),
+                        colors = OutlinedTextFieldDefaults.colors(
+                            focusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                            unfocusedContainerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                            focusedBorderColor = MaterialTheme.colorScheme.primary,
+                            unfocusedBorderColor = MaterialTheme.colorScheme.outline
+                        ),
                         trailingIcon = {
                             if (uiState.isDictionaryLoading) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(18.dp),
-                                    strokeWidth = 2.dp
+                                    strokeWidth = 2.dp,
+                                    color = MaterialTheme.colorScheme.primary
                                 )
                             } else {
                                 IconButton(
@@ -113,7 +129,8 @@ fun PlayerScreen(
                                     Icon(
                                         imageVector = Icons.Default.Search,
                                         contentDescription = "검색",
-                                        modifier = Modifier.size(20.dp)
+                                        modifier = Modifier.size(20.dp),
+                                        tint = MaterialTheme.colorScheme.primary
                                     )
                                 }
                             }

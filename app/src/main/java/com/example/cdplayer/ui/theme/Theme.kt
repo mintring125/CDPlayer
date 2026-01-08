@@ -32,18 +32,24 @@ private val DarkColorScheme = darkColorScheme(
 )
 
 private val LightColorScheme = lightColorScheme(
-    primary = CDPrimaryLight,
+    primary = KidsPrimaryLight,
     onPrimary = Color.White,
-    primaryContainer = CDPrimaryVariant,
-    onPrimaryContainer = Color.White,
-    secondary = CDSecondary,
+    primaryContainer = Color(0xFFFFE8DC),  // Very light coral
+    onPrimaryContainer = Color(0xFF5D4E42),
+    secondary = KidsSecondaryLight,
     onSecondary = Color.White,
+    secondaryContainer = Color(0xFFDCEED0), // Very light green
+    onSecondaryContainer = Color(0xFF3D4A33),
+    tertiary = Color(0xFF7FADCF),          // Soft sky blue
+    onTertiary = Color.White,
     background = CDBackgroundLight,
     onBackground = CDOnBackgroundLight,
     surface = CDSurfaceLight,
     onSurface = CDOnSurfaceLight,
-    surfaceVariant = Color(0xFFF0EBF5),   // Very light purple-grey
-    onSurfaceVariant = Color(0xFF5E506B)
+    surfaceVariant = CDSurfaceVariantLight,
+    onSurfaceVariant = CDOnSurfaceVariantLight,
+    outline = Color(0xFFC4B4A0),           // Warm beige outline
+    outlineVariant = Color(0xFFD8CAB8)     // Softer outline
 )
 
 @Composable

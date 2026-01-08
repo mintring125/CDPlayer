@@ -25,8 +25,11 @@ import androidx.compose.foundation.combinedClickable
 import androidx.compose.material.icons.filled.CheckCircle
 
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.material3.Card
+import androidx.compose.ui.res.painterResource
+import com.example.cdplayer.R
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -151,36 +154,40 @@ fun HomeScreen(
                     }
                 }
 
-                // Recently Played
-                if (recentlyPlayed.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "최근 재생",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
+                // Recently Played (항상 표시 - 더미 카드 포함)
+                item {
+                    SectionHeader(
+                        title = "최근 재생",
+                        modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                    )
+                }
 
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(recentlyPlayed) { audioFile ->
-                                AlbumCard(
-                                    audioFile = audioFile,
-                                    onClick = {
-                                        if (!selectionState.isSelectionMode) {
-                                            viewModel.playTrack(audioFile)
-                                            onNavigateToPlayer()
-                                        }
+                item {
+                    LazyRow(
+                        contentPadding = PaddingValues(horizontal = 16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        // 첫 번째: 인사 카드 (더미)
+                        item {
+                            GreetingCard()
+                        }
+
+                        // 나머지: 실제 최근 재생 목록
+                        items(recentlyPlayed) { audioFile ->
+                            AlbumCard(
+                                audioFile = audioFile,
+                                onClick = {
+                                    if (!selectionState.isSelectionMode) {
+                                        viewModel.playTrack(audioFile)
+                                        onNavigateToPlayer()
                                     }
-                                )
-                            }
+                                }
+                            )
                         }
                     }
-
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
                 }
+
+                item { Spacer(modifier = Modifier.height(24.dp)) }
 
                 // Favorite Albums (Replaces All Music)
                 if (favorites.isNotEmpty()) {
@@ -343,6 +350,49 @@ fun SectionHeader(
                 style = MaterialTheme.typography.bodyMedium,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
+        }
+    }
+}
+
+@Composable
+fun GreetingCard(
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier.width(140.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer
+        )
+    ) {
+        Column {
+            Image(
+                painter = painterResource(id = R.drawable.ic_launcher),
+                contentDescription = "앱 아이콘",
+                modifier = Modifier
+                    .size(width = 140.dp, height = 140.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+            )
+
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = "오늘도 화이팅!",
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                )
+                Text(
+                    text = "나은이 아빠",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
         }
     }
 }

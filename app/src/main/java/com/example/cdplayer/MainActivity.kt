@@ -4,14 +4,21 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import com.example.cdplayer.player.MusicPlayerManager
 import com.example.cdplayer.ui.navigation.CDPlayerNavHost
+import com.example.cdplayer.ui.screens.settings.SettingsViewModel
+import com.example.cdplayer.ui.screens.settings.ThemeMode
+import com.example.cdplayer.ui.screens.settings.dataStore
 import com.example.cdplayer.ui.theme.CDPlayerTheme
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -44,7 +51,22 @@ class MainActivity : ComponentActivity() {
         
         enableEdgeToEdge()
         setContent {
-            CDPlayerTheme {
+            // Read theme preference from DataStore
+            val themeModeState by dataStore.data.map { preferences ->
+                try {
+                    ThemeMode.valueOf(preferences[SettingsViewModel.THEME_MODE] ?: ThemeMode.SYSTEM.name)
+                } catch (e: Exception) {
+                    ThemeMode.SYSTEM
+                }
+            }.collectAsState(initial = ThemeMode.SYSTEM)
+
+            val isDarkTheme = when (themeModeState) {
+                ThemeMode.LIGHT -> false
+                ThemeMode.DARK -> true
+                ThemeMode.SYSTEM -> isSystemInDarkTheme()
+            }
+
+            CDPlayerTheme(darkTheme = isDarkTheme) {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
