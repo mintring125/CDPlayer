@@ -59,6 +59,7 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.text.input.ImeAction
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cdplayer.ui.components.AudioItemCompact
+import com.example.cdplayer.ui.components.FavoriteButtonLarge
 import com.example.cdplayer.ui.components.LargeCoverArt
 import com.example.cdplayer.ui.components.PlaybackControls
 
@@ -71,7 +72,9 @@ fun PlayerScreen(
     val playbackState by viewModel.playbackState.collectAsState()
     val uiState by viewModel.uiState.collectAsState()
     val bookmarks by viewModel.bookmarks.collectAsState()
+    val currentTrackFromDb by viewModel.currentTrackFavorite.collectAsState()
     val currentTrack = playbackState.currentTrack
+    val isFavorite = currentTrackFromDb?.isFavorite ?: false
 
     var showMenu by remember { mutableStateOf(false) }
     var searchQuery by remember { mutableStateOf("") }
@@ -241,15 +244,27 @@ fun PlayerScreen(
                         verticalArrangement = Arrangement.Center,
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                         // Track Info
-                        Text(
-                            text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
+                         // Track Info with Favorite Button
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (currentTrack != null) {
+                                FavoriteButtonLarge(
+                                    isFavorite = isFavorite,
+                                    onToggle = { viewModel.toggleFavorite() }
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
 
@@ -297,7 +312,8 @@ fun PlayerScreen(
                             onRepeatModeChange = { viewModel.toggleRepeatMode() },
                             onShuffleChange = { viewModel.toggleShuffle() },
                             onSkipBackward = { viewModel.skipBackward() },
-                            onSkipForward = { viewModel.skipForward() }
+                            onSkipForward = { viewModel.skipForward() },
+                            isLandscape = true
                         )
                     }
                 }
@@ -322,19 +338,31 @@ fun PlayerScreen(
 
                     Spacer(modifier = Modifier.height(32.dp))
 
-                    // Track Info
+                    // Track Info with Favorite Button
                     Column(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalAlignment = Alignment.CenterHorizontally
                     ) {
-                        Text(
-                            text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
-                            style = MaterialTheme.typography.headlineSmall,
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                            textAlign = TextAlign.Center
-                        )
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Text(
+                                text = currentTrack?.displayTitle ?: "재생 중인 트랙 없음",
+                                style = MaterialTheme.typography.headlineSmall,
+                                fontWeight = FontWeight.Bold,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.weight(1f, fill = false)
+                            )
+                            if (currentTrack != null) {
+                                FavoriteButtonLarge(
+                                    isFavorite = isFavorite,
+                                    onToggle = { viewModel.toggleFavorite() }
+                                )
+                            }
+                        }
 
                         Spacer(modifier = Modifier.height(8.dp))
 

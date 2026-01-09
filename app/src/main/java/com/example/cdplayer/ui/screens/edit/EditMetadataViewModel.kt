@@ -318,6 +318,9 @@ class EditMetadataViewModel @Inject constructor(
                 }
 
                 // 3. DB 업데이트
+                // 새 커버아트가 선택되었으면 coverArtPath를 null로 설정 (CoverArt 컴포넌트에서 coverArtPath가 우선이므로)
+                val newCoverArtPath = if (artworkFile != null) null else audioFile.coverArtPath
+
                 val updatedAudioFile = audioFile.copy(
                     title = state.title,
                     artist = state.artist.takeIf { it.isNotBlank() },
@@ -326,6 +329,8 @@ class EditMetadataViewModel @Inject constructor(
                     year = state.year.toIntOrNull(),
                     trackNumber = state.trackNumber.toIntOrNull(),
                     path = newPath,
+                    // 새 커버아트가 선택되었으면 기존 coverArtPath 제거
+                    coverArtPath = newCoverArtPath,
                     // 영구 저장된 URI 사용
                     coverArtUri = persistentUriString
                 )

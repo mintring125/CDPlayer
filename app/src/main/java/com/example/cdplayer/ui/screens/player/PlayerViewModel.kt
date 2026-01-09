@@ -2,6 +2,7 @@ package com.example.cdplayer.ui.screens.player
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cdplayer.data.repository.AudioRepository
 import com.example.cdplayer.data.repository.BookmarkRepository
 import com.example.cdplayer.data.repository.DictionaryRepository
 import com.example.cdplayer.domain.model.Bookmark
@@ -16,6 +17,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.ExperimentalCoroutinesApi
 import javax.inject.Inject
 
 data class PlayerUiState(
@@ -33,9 +35,11 @@ sealed class DictionaryResult {
     data class Error(val message: String) : DictionaryResult()
 }
 
+@OptIn(ExperimentalCoroutinesApi::class)
 @HiltViewModel
 class PlayerViewModel @Inject constructor(
     private val musicPlayerManager: MusicPlayerManager,
+    private val audioRepository: AudioRepository,
     private val bookmarkRepository: BookmarkRepository,
     private val dictionaryRepository: DictionaryRepository
 ) : ViewModel() {
@@ -55,6 +59,18 @@ class PlayerViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
+        )
+
+    val currentTrackFavorite = playbackState
+        .flatMapLatest { state ->
+            state.currentTrack?.let { track ->
+                audioRepository.getAudioFileByIdFlow(track.id)
+            } ?: flowOf(null)
+        }
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = null
         )
 
     fun playPause() {
@@ -195,5 +211,13 @@ class PlayerViewModel @Inject constructor(
 
     fun clearDictionaryResult() {
         _uiState.value = _uiState.value.copy(dictionaryResult = null)
+    }
+
+    fun toggleFavorite() {
+        viewModelScope.launch {
+            currentTrackFavorite.value?.let { audioFile ->
+                audioRepository.updateAudioFile(audioFile.copy(isFavorite = !audioFile.isFavorite))
+            }
+        }
     }
 }

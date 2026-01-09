@@ -56,9 +56,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cdplayer.domain.model.AudioFile
+import com.example.cdplayer.domain.model.AudioType
 import com.example.cdplayer.domain.model.Playlist
 import com.example.cdplayer.ui.components.AudioItem
+import com.example.cdplayer.ui.components.BulkActionToolbar
 import com.example.cdplayer.ui.components.CoverArt
+import com.example.cdplayer.ui.components.FavoriteButton
+import androidx.compose.material.icons.filled.Close
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -78,6 +82,7 @@ fun LibraryScreen(
     val allAlbums by viewModel.allAlbums.collectAsState()
     val allPlaylists by viewModel.allPlaylists.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
+    val selectionState by viewModel.selectionState.collectAsState()
 
     val tabs = listOf(
         LibraryTab.MUSIC to "음악",
@@ -87,28 +92,48 @@ fun LibraryScreen(
         LibraryTab.PLAYLISTS to "플레이리스트"
     )
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "라이브러리",
-                        fontWeight = FontWeight.Bold
+    Box(modifier = Modifier.fillMaxSize()) {
+        Scaffold(
+            topBar = {
+                if (selectionState.isSelectionMode) {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "${selectionState.selectedIds.size}개 선택됨",
+                                fontWeight = FontWeight.Bold
+                            )
+                        },
+                        navigationIcon = {
+                            IconButton(onClick = { viewModel.clearSelection() }) {
+                                Icon(Icons.Default.Close, contentDescription = "취소")
+                            }
+                        },
+                        colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
+                    )
+                } else {
+                    TopAppBar(
+                        title = {
+                            Text(
+                                text = "라이브러리",
+                                fontWeight = FontWeight.Bold
+                            )
+                        }
                     )
                 }
-            )
-        },
-        floatingActionButton = {
-            if (uiState.selectedTab == LibraryTab.PLAYLISTS) {
-                FloatingActionButton(
-                    onClick = onNavigateToCreatePlaylist,
-                    containerColor = MaterialTheme.colorScheme.primary
-                ) {
-                    Icon(Icons.Default.Add, contentDescription = "새 플레이리스트")
+            },
+            floatingActionButton = {
+                if (uiState.selectedTab == LibraryTab.PLAYLISTS && !selectionState.isSelectionMode) {
+                    FloatingActionButton(
+                        onClick = onNavigateToCreatePlaylist,
+                        containerColor = MaterialTheme.colorScheme.primary
+                    ) {
+                        Icon(Icons.Default.Add, contentDescription = "새 플레이리스트")
+                    }
                 }
             }
-        }
-    ) { paddingValues ->
+        ) { paddingValues ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -140,7 +165,11 @@ fun LibraryScreen(
                         },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onEditMetadata = { onNavigateToEditMetadata(it.id) },
-                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.AUDIOBOOK) }
+                        onMoveToAudiobook = { viewModel.moveTrackToType(it, AudioType.AUDIOBOOK) },
+                        onToggleFavorite = { viewModel.toggleFavorite(it) },
+                        isSelectionMode = selectionState.isSelectionMode,
+                        selectedIds = selectionState.selectedIds,
+                        onToggleSelection = { viewModel.toggleSelection(it) }
                     )
                 }
                 LibraryTab.AUDIOBOOKS -> {
@@ -153,7 +182,11 @@ fun LibraryScreen(
                         },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onEditMetadata = { onNavigateToEditMetadata(it.id) },
-                        onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) }
+                        onMoveToMusic = { viewModel.moveTrackToType(it, AudioType.MUSIC) },
+                        onToggleFavorite = { viewModel.toggleFavorite(it) },
+                        isSelectionMode = selectionState.isSelectionMode,
+                        selectedIds = selectionState.selectedIds,
+                        onToggleSelection = { viewModel.toggleSelection(it) }
                     )
                 }
                 LibraryTab.ARTISTS -> {
@@ -168,8 +201,8 @@ fun LibraryScreen(
                         items = allAlbums,
                         icon = Icons.Default.Album,
                         onItemClick = onNavigateToAlbum,
-                        onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) },
-                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.AUDIOBOOK) }
+                        onMoveToMusic = { viewModel.moveAlbumToType(it, AudioType.MUSIC) },
+                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, AudioType.AUDIOBOOK) }
                     )
                 }
                 LibraryTab.PLAYLISTS -> {
@@ -179,6 +212,28 @@ fun LibraryScreen(
                     )
                 }
             }
+        }
+        }
+
+        // Bulk Action Toolbar
+        if (selectionState.isSelectionMode) {
+            BulkActionToolbar(
+                selectedCount = selectionState.selectedIds.size,
+                onMove = { /* TODO */ },
+                onDelete = { viewModel.deleteSelected() },
+                onAddToPlaylist = { /* TODO */ },
+                // 음악 탭에서는 "오디오북으로 이동"만, 오디오북 탭에서는 "음악으로 이동"만 표시
+                onChangeToAudiobook = if (uiState.selectedTab != LibraryTab.AUDIOBOOKS) {
+                    { viewModel.changeSelectedToType(AudioType.AUDIOBOOK) }
+                } else null,
+                onChangeToMusic = if (uiState.selectedTab != LibraryTab.MUSIC) {
+                    { viewModel.changeSelectedToType(AudioType.MUSIC) }
+                } else null,
+                onCancel = { viewModel.clearSelection() },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(bottom = 80.dp)
+            )
         }
     }
 }
@@ -191,7 +246,11 @@ fun TrackList(
     onAddToQueue: (AudioFile) -> Unit,
     onEditMetadata: (AudioFile) -> Unit,
     onMoveToMusic: ((AudioFile) -> Unit)? = null,
-    onMoveToAudiobook: ((AudioFile) -> Unit)? = null
+    onMoveToAudiobook: ((AudioFile) -> Unit)? = null,
+    onToggleFavorite: ((AudioFile) -> Unit)? = null,
+    isSelectionMode: Boolean = false,
+    selectedIds: Set<Long> = emptySet(),
+    onToggleSelection: (Long) -> Unit = {}
 ) {
     if (tracks.isEmpty()) {
         EmptyState(
@@ -200,18 +259,40 @@ fun TrackList(
         )
     } else {
         LazyColumn(
-            contentPadding = PaddingValues(bottom = 80.dp)
+            contentPadding = PaddingValues(bottom = if (isSelectionMode) 140.dp else 80.dp)
         ) {
             items(tracks.size) { index ->
-                AudioItem(
-                    audioFile = tracks[index],
-                    onClick = { onTrackClick(index) },
-                    isPlaying = currentTrackId == tracks[index].id,
-                    onAddToQueue = { onAddToQueue(tracks[index]) },
-                    onEditMetadata = { onEditMetadata(tracks[index]) },
-                    onMoveToMusic = onMoveToMusic?.let { handler -> { handler(tracks[index]) } },
-                    onMoveToAudiobook = onMoveToAudiobook?.let { handler -> { handler(tracks[index]) } }
-                )
+                val track = tracks[index]
+                Row(
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    AudioItem(
+                        audioFile = track,
+                        onClick = {
+                            if (isSelectionMode) {
+                                onToggleSelection(track.id)
+                            } else {
+                                onTrackClick(index)
+                            }
+                        },
+                        isPlaying = currentTrackId == track.id,
+                        onAddToQueue = if (!isSelectionMode) { { onAddToQueue(track) } } else null,
+                        onEditMetadata = if (!isSelectionMode) { { onEditMetadata(track) } } else null,
+                        onMoveToMusic = if (!isSelectionMode) onMoveToMusic?.let { handler -> { handler(track) } } else null,
+                        onMoveToAudiobook = if (!isSelectionMode) onMoveToAudiobook?.let { handler -> { handler(track) } } else null,
+                        modifier = Modifier.weight(1f),
+                        isSelectionMode = isSelectionMode,
+                        isSelected = track.id in selectedIds,
+                        onToggleSelection = { onToggleSelection(track.id) }
+                    )
+                    if (onToggleFavorite != null && !isSelectionMode) {
+                        FavoriteButton(
+                            isFavorite = track.isFavorite,
+                            onToggle = { onToggleFavorite(track) },
+                            modifier = Modifier.padding(end = 8.dp)
+                        )
+                    }
+                }
             }
         }
     }

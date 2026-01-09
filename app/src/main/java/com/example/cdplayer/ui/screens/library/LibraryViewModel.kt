@@ -13,8 +13,11 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import javax.inject.Inject
+import com.example.cdplayer.ui.components.SelectionState
+import com.example.cdplayer.domain.model.AudioType
 
 enum class LibraryTab {
     MUSIC, AUDIOBOOKS, ARTISTS, ALBUMS, PLAYLISTS
@@ -72,7 +75,19 @@ class LibraryViewModel @Inject constructor(
 
     val playbackState = musicPlayerManager.playbackState
 
+    private val _selectionState = MutableStateFlow(SelectionState())
+    val selectionState: StateFlow<SelectionState> = _selectionState.asStateFlow()
+
+    fun toggleSelection(audioId: Long) {
+        _selectionState.update { it.toggle(audioId) }
+    }
+
+    fun clearSelection() {
+        _selectionState.update { it.clear() }
+    }
+
     fun selectTab(tab: LibraryTab) {
+        clearSelection()
         _uiState.value = _uiState.value.copy(selectedTab = tab)
     }
 
@@ -94,17 +109,49 @@ class LibraryViewModel @Inject constructor(
         }
     }
 
-    fun moveAlbumToType(album: AudioFile, type: com.example.cdplayer.domain.model.AudioType) {
+    fun moveTrackToType(audioFile: AudioFile, type: com.example.cdplayer.domain.model.AudioType) {
         viewModelScope.launch {
-            if (album.album != null) {
-                audioRepository.moveAlbumToType(album.album, type)
-            }
+            audioRepository.updateAudioFile(audioFile.copy(type = type))
         }
     }
 
     fun moveAlbumToType(albumName: String, type: com.example.cdplayer.domain.model.AudioType) {
         viewModelScope.launch {
             audioRepository.moveAlbumToType(albumName, type)
+        }
+    }
+
+    fun toggleFavorite(audioFile: AudioFile) {
+        viewModelScope.launch {
+            audioRepository.updateAudioFile(audioFile.copy(isFavorite = !audioFile.isFavorite))
+        }
+    }
+
+    fun changeSelectedToType(type: AudioType) {
+        val selectedIds = _selectionState.value.selectedIds.toList()
+        if (selectedIds.isEmpty()) return
+
+        viewModelScope.launch {
+            val currentFiles = allMusic.value + allAudiobooks.value
+            selectedIds.forEach { id ->
+                val audioFile = currentFiles.find { it.id == id }
+                audioFile?.let {
+                    audioRepository.updateAudioFile(it.copy(type = type))
+                }
+            }
+            clearSelection()
+        }
+    }
+
+    fun deleteSelected() {
+        val selectedIds = _selectionState.value.selectedIds.toList()
+        if (selectedIds.isEmpty()) return
+
+        viewModelScope.launch {
+            selectedIds.forEach { id ->
+                audioRepository.deleteAudioFileById(id)
+            }
+            clearSelection()
         }
     }
 }

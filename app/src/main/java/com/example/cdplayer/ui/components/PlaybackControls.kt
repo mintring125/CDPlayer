@@ -51,8 +51,14 @@ fun PlaybackControls(
     onShuffleChange: () -> Unit,
     onSkipBackward: () -> Unit,
     onSkipForward: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isLandscape: Boolean = false
 ) {
+    // 가로모드에서는 아이콘 크기를 더 크게
+    val smallIconSize = if (isLandscape) 32.dp else 24.dp
+    val mediumIconSize = if (isLandscape) 40.dp else 32.dp
+    val playButtonSize = if (isLandscape) 80.dp else 64.dp
+    val playIconSize = if (isLandscape) 44.dp else 32.dp
     var sliderPosition by remember(currentPosition) { mutableFloatStateOf(currentPosition.toFloat()) }
     var isDragging by remember { mutableFloatStateOf(0f) }
 
@@ -112,6 +118,7 @@ fun PlaybackControls(
                 Icon(
                     imageVector = if (shuffleEnabled) Icons.Default.ShuffleOn else Icons.Default.Shuffle,
                     contentDescription = "셔플",
+                    modifier = Modifier.size(smallIconSize),
                     tint = if (shuffleEnabled) MaterialTheme.colorScheme.primary
                           else MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -122,7 +129,7 @@ fun PlaybackControls(
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
                     contentDescription = "이전",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(mediumIconSize)
                 )
             }
 
@@ -130,14 +137,15 @@ fun PlaybackControls(
             IconButton(onClick = onSkipBackward) {
                 Icon(
                     imageVector = Icons.Default.Replay10,
-                    contentDescription = "10초 뒤로"
+                    contentDescription = "10초 뒤로",
+                    modifier = Modifier.size(smallIconSize)
                 )
             }
 
             // Play/Pause
             FilledIconButton(
                 onClick = onPlayPause,
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(playButtonSize),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
@@ -145,7 +153,7 @@ fun PlaybackControls(
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isPlaying) "일시정지" else "재생",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(playIconSize)
                 )
             }
 
@@ -153,7 +161,8 @@ fun PlaybackControls(
             IconButton(onClick = onSkipForward) {
                 Icon(
                     imageVector = Icons.Default.Forward10,
-                    contentDescription = "10초 앞으로"
+                    contentDescription = "10초 앞으로",
+                    modifier = Modifier.size(smallIconSize)
                 )
             }
 
@@ -162,7 +171,7 @@ fun PlaybackControls(
                 Icon(
                     imageVector = Icons.Default.SkipNext,
                     contentDescription = "다음",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(mediumIconSize)
                 )
             }
 
@@ -175,6 +184,7 @@ fun PlaybackControls(
                         RepeatMode.ONE -> Icons.Default.RepeatOne
                     },
                     contentDescription = "반복",
+                    modifier = Modifier.size(smallIconSize),
                     tint = if (repeatMode != RepeatMode.OFF) MaterialTheme.colorScheme.primary
                           else MaterialTheme.colorScheme.onSurfaceVariant
                 )

@@ -59,6 +59,7 @@ import com.example.cdplayer.domain.model.AudioFile
 import com.example.cdplayer.ui.components.AudioItem
 import com.example.cdplayer.ui.components.BulkActionToolbar
 import com.example.cdplayer.ui.components.CoverArt
+import com.example.cdplayer.ui.components.FavoriteButton
 import com.example.cdplayer.ui.components.FolderPickerDialog
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -181,7 +182,8 @@ fun HomeScreen(
                                         viewModel.playTrack(audioFile)
                                         onNavigateToPlayer()
                                     }
-                                }
+                                },
+                                onToggleFavorite = { viewModel.toggleFavorite(audioFile.id) }
                             )
                         }
                     }
@@ -189,11 +191,51 @@ fun HomeScreen(
 
                 item { Spacer(modifier = Modifier.height(24.dp)) }
 
-                // Favorite Albums (Replaces All Music)
+                // Audiobooks (오디오북을 먼저 표시)
+                if (allAudiobooks.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "오디오북",
+                            subtitle = "${allAudiobooks.size}개",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(allAudiobooks) { audioFile ->
+                                AlbumCard(
+                                    audioFile = audioFile,
+                                    onClick = {
+                                        if (selectionState.isSelectionMode) {
+                                            viewModel.toggleSelection(audioFile.id)
+                                        } else {
+                                            viewModel.playTrack(audioFile)
+                                            onNavigateToPlayer()
+                                        }
+                                    },
+                                    onLongClick = {
+                                        viewModel.toggleSelection(audioFile.id)
+                                    },
+                                    isSelectionMode = selectionState.isSelectionMode,
+                                    isSelected = audioFile.id in selectionState.selectedIds,
+                                    isAudiobook = true
+                                )
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
+
+                // Favorite Albums (즐겨찾기를 오디오북 아래에 표시)
                 if (favorites.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "즐겨찾기 앨범",
+                            title = "즐겨찾기",
                             subtitle = "${favorites.size}개",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
@@ -211,49 +253,6 @@ fun HomeScreen(
                                         if (selectionState.isSelectionMode) {
                                             viewModel.toggleSelection(audioFile.id)
                                         } else {
-                                            // Play favorite (as album/track)
-                                            viewModel.playTrack(audioFile)
-                                            onNavigateToPlayer()
-                                        }
-                                    },
-                                    onLongClick = {
-                                        viewModel.toggleSelection(audioFile.id)
-                                    },
-                                    isSelectionMode = selectionState.isSelectionMode,
-                                    isSelected = audioFile.id in selectionState.selectedIds
-                                )
-                            }
-                        }
-                    }
-
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
-                }
-
-                // Removed All Music Section
-
-
-                // Audiobooks
-                if (allAudiobooks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "오디오북",
-                            subtitle = "${allAudiobooks.size}개",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(allAudiobooks.take(10)) { audioFile ->
-                                AlbumCard(
-                                    audioFile = audioFile,
-                                    onClick = {
-                                        if (selectionState.isSelectionMode) {
-                                            viewModel.toggleSelection(audioFile.id)
-                                        } else {
                                             viewModel.playTrack(audioFile)
                                             onNavigateToPlayer()
                                         }
@@ -263,7 +262,7 @@ fun HomeScreen(
                                     },
                                     isSelectionMode = selectionState.isSelectionMode,
                                     isSelected = audioFile.id in selectionState.selectedIds,
-                                    isAudiobook = true
+                                    onToggleFavorite = { viewModel.toggleFavorite(audioFile.id) }
                                 )
                             }
                         }
@@ -406,10 +405,11 @@ fun AlbumCard(
     onLongClick: () -> Unit = {},
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
-    isAudiobook: Boolean = false
+    isAudiobook: Boolean = false,
+    onToggleFavorite: (() -> Unit)? = null
 ) {
     val height = if (isAudiobook) 210.dp else 140.dp
-    
+
     Card(
         modifier = modifier
             .width(140.dp)
@@ -430,15 +430,33 @@ fun AlbumCard(
     ) {
         Box {
             Column {
-                CoverArt(
-                    coverArtPath = audioFile.coverArtPath,
-                    coverArtUri = audioFile.coverArtUri,
-                    modifier = Modifier
-                        .size(width = 140.dp, height = height)
-                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                )
-
-
+                Box {
+                    CoverArt(
+                        coverArtPath = audioFile.coverArtPath,
+                        coverArtUri = audioFile.coverArtUri,
+                        modifier = Modifier
+                            .size(width = 140.dp, height = height)
+                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                    )
+                    // 하트 버튼을 앨범사진 오른쪽 위에 배치
+                    if (onToggleFavorite != null && !isSelectionMode) {
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.TopEnd)
+                                .padding(4.dp)
+                                .size(32.dp)
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(MaterialTheme.colorScheme.surface.copy(alpha = 0.7f)),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            FavoriteButton(
+                                isFavorite = audioFile.isFavorite,
+                                onToggle = onToggleFavorite,
+                                size = 18.dp
+                            )
+                        }
+                    }
+                }
 
                 Column(
                     modifier = Modifier.padding(12.dp)
@@ -459,9 +477,6 @@ fun AlbumCard(
                     )
                 }
             }
-
-                // Menu removed
-
 
             if (isSelected) {
                 Box(

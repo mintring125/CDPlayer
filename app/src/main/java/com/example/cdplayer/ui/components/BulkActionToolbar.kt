@@ -13,7 +13,7 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DriveFileMove
 import androidx.compose.material.icons.filled.PlaylistAdd
 import androidx.compose.material.icons.filled.MusicNote
-import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.filled.Headphones
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -31,8 +31,8 @@ fun BulkActionToolbar(
     onMove: () -> Unit,
     onDelete: () -> Unit,
     onAddToPlaylist: () -> Unit,
-    onChangeToAudiobook: () -> Unit,
-    onChangeToMusic: () -> Unit,
+    onChangeToAudiobook: (() -> Unit)? = null,
+    onChangeToMusic: (() -> Unit)? = null,
     onCancel: () -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -64,14 +64,18 @@ fun BulkActionToolbar(
             IconButton(onClick = onAddToPlaylist) {
                 Icon(Icons.Default.PlaylistAdd, contentDescription = "플레이리스트에 추가")
             }
-            // Move to Audiobook / Music Actions
-            IconButton(onClick = onChangeToAudiobook) {
-                Icon(Icons.Default.Star, contentDescription = "오디오북으로 이동")
+            // Move to Audiobook / Music Actions (conditionally shown)
+            if (onChangeToAudiobook != null) {
+                IconButton(onClick = onChangeToAudiobook) {
+                    Icon(Icons.Default.Headphones, contentDescription = "오디오북으로 이동")
+                }
             }
-            IconButton(onClick = onChangeToMusic) {
-                Icon(Icons.Default.MusicNote, contentDescription = "음악으로 이동")
+            if (onChangeToMusic != null) {
+                IconButton(onClick = onChangeToMusic) {
+                    Icon(Icons.Default.MusicNote, contentDescription = "음악으로 이동")
+                }
             }
-            
+
             IconButton(onClick = onDelete) {
                 Icon(Icons.Default.Delete, contentDescription = "삭제")
             }

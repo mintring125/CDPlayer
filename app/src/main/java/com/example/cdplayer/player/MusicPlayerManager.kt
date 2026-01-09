@@ -1,6 +1,9 @@
 package com.example.cdplayer.player
 
 import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.os.Build
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.PlaybackParameters
@@ -100,16 +103,27 @@ class MusicPlayerManager @Inject constructor(
     }
 
     fun playQueue(queue: List<AudioFile>, startIndex: Int = 0) {
+        // 서비스 시작
+        startPlaybackService()
+
         exoPlayer?.let { player ->
             val mediaItems = queue.map { audio ->
+                // 앨범 아트 URI 결정
+                val artworkUri = when {
+                    audio.coverArtUri != null -> Uri.parse(audio.coverArtUri)
+                    audio.coverArtPath != null -> Uri.parse("file://${audio.coverArtPath}")
+                    else -> null
+                }
+
                 MediaItem.Builder()
                     .setUri(audio.path)
                     .setMediaId(audio.id.toString())
                     .setMediaMetadata(
                         MediaMetadata.Builder()
-                            .setTitle(audio.title)
-                            .setArtist(audio.artist)
+                            .setTitle(audio.title ?: audio.displayTitle)
+                            .setArtist(audio.artist ?: audio.displayArtist)
                             .setAlbumTitle(audio.album)
+                            .setArtworkUri(artworkUri)
                             .build()
                     )
                     .build()
@@ -131,16 +145,33 @@ class MusicPlayerManager @Inject constructor(
         }
     }
 
+    private fun startPlaybackService() {
+        val serviceIntent = Intent(context, PlaybackService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            context.startForegroundService(serviceIntent)
+        } else {
+            context.startService(serviceIntent)
+        }
+    }
+
     fun addToQueue(audioFile: AudioFile) {
         exoPlayer?.let { player ->
+            // 앨범 아트 URI 결정
+            val artworkUri = when {
+                audioFile.coverArtUri != null -> Uri.parse(audioFile.coverArtUri)
+                audioFile.coverArtPath != null -> Uri.parse("file://${audioFile.coverArtPath}")
+                else -> null
+            }
+
             val mediaItem = MediaItem.Builder()
                 .setUri(audioFile.path)
                 .setMediaId(audioFile.id.toString())
                 .setMediaMetadata(
                     MediaMetadata.Builder()
-                        .setTitle(audioFile.title)
-                        .setArtist(audioFile.artist)
+                        .setTitle(audioFile.title ?: audioFile.displayTitle)
+                        .setArtist(audioFile.artist ?: audioFile.displayArtist)
                         .setAlbumTitle(audioFile.album)
+                        .setArtworkUri(artworkUri)
                         .build()
                 )
                 .build()
