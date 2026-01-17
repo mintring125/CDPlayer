@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 
 import kotlinx.coroutines.flow.update
@@ -24,6 +25,14 @@ data class HomeUiState(
     val isScanning: Boolean = false,
     val scanProgress: ScanProgress? = null,
     val error: String? = null
+)
+
+data class AudiobookAlbum(
+    val albumName: String,
+    val coverArtPath: String?,
+    val coverArtUri: String?,
+    val trackCount: Int,
+    val tracks: List<AudioFile>
 )
 
 @HiltViewModel
@@ -51,6 +60,28 @@ class HomeViewModel @Inject constructor(
         )
 
     val allAudiobooks = audioRepository.getAllAudiobooks()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = emptyList()
+        )
+
+    // Audiobooks grouped by album
+    val audiobookAlbums: StateFlow<List<AudiobookAlbum>> = audioRepository.getAllAudiobooks()
+        .map { audiobooks ->
+            audiobooks.groupBy { it.album ?: "알 수 없는 앨범" }
+                .map { (albumName, tracks) ->
+                    val firstTrack = tracks.firstOrNull()
+                    AudiobookAlbum(
+                        albumName = albumName,
+                        coverArtPath = firstTrack?.coverArtPath,
+                        coverArtUri = firstTrack?.coverArtUri,
+                        trackCount = tracks.size,
+                        tracks = tracks.sortedBy { it.trackNumber ?: Int.MAX_VALUE }
+                    )
+                }
+                .sortedBy { it.albumName }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),

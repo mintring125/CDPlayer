@@ -1,5 +1,7 @@
 package com.example.cdplayer.ui.screens.home
 
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -16,9 +18,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.foundation.combinedClickable
@@ -27,6 +32,7 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.ui.res.painterResource
 import com.example.cdplayer.R
@@ -34,6 +40,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Divider
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,19 +48,24 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.window.DialogProperties
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.example.cdplayer.domain.model.AudioFile
 import com.example.cdplayer.ui.components.AudioItem
@@ -74,9 +86,11 @@ fun HomeScreen(
     val favorites by viewModel.favorites.collectAsState()
     // val allMusic by viewModel.allMusic.collectAsState() // Removed
     val allAudiobooks by viewModel.allAudiobooks.collectAsState()
+    val audiobookAlbums by viewModel.audiobookAlbums.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
     val selectionState by viewModel.selectionState.collectAsState()
     var showFolderPicker by remember { mutableStateOf(false) }
+    var selectedAudiobookAlbum by remember { mutableStateOf<AudiobookAlbum?>(null) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -181,7 +195,8 @@ fun HomeScreen(
                                         viewModel.playTrack(audioFile)
                                         onNavigateToPlayer()
                                     }
-                                }
+                                },
+                                showFavoriteIcon = true
                             )
                         }
                     }
@@ -189,7 +204,36 @@ fun HomeScreen(
 
                 item { Spacer(modifier = Modifier.height(24.dp)) }
 
-                // Favorite Albums (Replaces All Music)
+                // Audiobooks (앨범별 그룹화)
+                if (audiobookAlbums.isNotEmpty()) {
+                    item {
+                        SectionHeader(
+                            title = "오디오북",
+                            subtitle = "${audiobookAlbums.size}개 앨범",
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                        )
+                    }
+
+                    item {
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp)
+                        ) {
+                            items(audiobookAlbums) { album ->
+                                AudiobookAlbumCard(
+                                    album = album,
+                                    onClick = {
+                                        selectedAudiobookAlbum = album
+                                    }
+                                )
+                            }
+                        }
+                    }
+
+                    item { Spacer(modifier = Modifier.height(24.dp)) }
+                }
+
+                // Favorite Albums (오디오북 아래로 이동됨)
                 if (favorites.isNotEmpty()) {
                     item {
                         SectionHeader(
@@ -220,50 +264,8 @@ fun HomeScreen(
                                         viewModel.toggleSelection(audioFile.id)
                                     },
                                     isSelectionMode = selectionState.isSelectionMode,
-                                    isSelected = audioFile.id in selectionState.selectedIds
-                                )
-                            }
-                        }
-                    }
-
-                    item { Spacer(modifier = Modifier.height(24.dp)) }
-                }
-
-                // Removed All Music Section
-
-
-                // Audiobooks
-                if (allAudiobooks.isNotEmpty()) {
-                    item {
-                        SectionHeader(
-                            title = "오디오북",
-                            subtitle = "${allAudiobooks.size}개",
-                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
-                        )
-                    }
-
-                    item {
-                        LazyRow(
-                            contentPadding = PaddingValues(horizontal = 16.dp),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp)
-                        ) {
-                            items(allAudiobooks.take(10)) { audioFile ->
-                                AlbumCard(
-                                    audioFile = audioFile,
-                                    onClick = {
-                                        if (selectionState.isSelectionMode) {
-                                            viewModel.toggleSelection(audioFile.id)
-                                        } else {
-                                            viewModel.playTrack(audioFile)
-                                            onNavigateToPlayer()
-                                        }
-                                    },
-                                    onLongClick = {
-                                        viewModel.toggleSelection(audioFile.id)
-                                    },
-                                    isSelectionMode = selectionState.isSelectionMode,
                                     isSelected = audioFile.id in selectionState.selectedIds,
-                                    isAudiobook = true
+                                    showFavoriteIcon = true
                                 )
                             }
                         }
@@ -325,6 +327,26 @@ fun HomeScreen(
                 }
             )
         }
+
+        // Audiobook Tracks Dialog
+        selectedAudiobookAlbum?.let { album ->
+            AudiobookTracksDialog(
+                album = album,
+                onDismiss = { selectedAudiobookAlbum = null },
+                onTrackClick = { track ->
+                    viewModel.playTrack(track)
+                    selectedAudiobookAlbum = null
+                    onNavigateToPlayer()
+                },
+                onPlayAll = {
+                    if (album.tracks.isNotEmpty()) {
+                        viewModel.playTracks(album.tracks, 0)
+                        selectedAudiobookAlbum = null
+                        onNavigateToPlayer()
+                    }
+                }
+            )
+        }
     }
 }
 
@@ -358,11 +380,40 @@ fun SectionHeader(
 fun GreetingCard(
     modifier: Modifier = Modifier
 ) {
+    // 색깔 목록 (보라색부터 시작)
+    val colors = listOf(
+        Color(0xFF9C27B0), // Purple
+        Color(0xFF2196F3), // Blue
+        Color(0xFF4CAF50), // Green
+        Color(0xFFFFEB3B), // Yellow
+        Color(0xFFFF9800), // Orange
+        Color(0xFFE91E63)  // Pink
+    )
+    
+    var colorIndex by remember { mutableIntStateOf(0) }
+    var rotationTarget by remember { mutableStateOf(0f) }
+    
+    val rotation by animateFloatAsState(
+        targetValue = rotationTarget,
+        animationSpec = tween(durationMillis = 500),
+        label = "card_rotation"
+    )
+    
+    val currentColor = colors[colorIndex % colors.size]
+    
     Card(
-        modifier = modifier.width(140.dp),
+        modifier = modifier
+            .width(140.dp)
+            .graphicsLayer {
+                rotationY = rotation
+            }
+            .clickable {
+                rotationTarget += 360f
+                colorIndex = (colorIndex + 1) % colors.size
+            },
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer
+            containerColor = currentColor
         )
     ) {
         Column {
@@ -383,12 +434,12 @@ fun GreetingCard(
                     fontWeight = FontWeight.Bold,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer
+                    color = Color.White
                 )
                 Text(
                     text = "나은이 아빠",
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f),
+                    color = Color.White.copy(alpha = 0.8f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )
@@ -406,7 +457,8 @@ fun AlbumCard(
     onLongClick: () -> Unit = {},
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
-    isAudiobook: Boolean = false
+    isAudiobook: Boolean = false,
+    showFavoriteIcon: Boolean = false
 ) {
     val height = if (isAudiobook) 210.dp else 140.dp
     
@@ -438,8 +490,6 @@ fun AlbumCard(
                         .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
                 )
 
-
-
                 Column(
                     modifier = Modifier.padding(12.dp)
                 ) {
@@ -460,8 +510,27 @@ fun AlbumCard(
                 }
             }
 
-                // Menu removed
-
+            // Favorite heart icon (top-right)
+            if (showFavoriteIcon) {
+                Box(
+                    modifier = Modifier
+                        .align(Alignment.TopEnd)
+                        .padding(8.dp)
+                        .size(24.dp)
+                        .background(
+                            color = Color.Black.copy(alpha = 0.4f),
+                            shape = RoundedCornerShape(12.dp)
+                        ),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Favorite,
+                        contentDescription = "즐겨찾기",
+                        tint = Color(0xFFFF4081),
+                        modifier = Modifier.size(16.dp)
+                    )
+                }
+            }
 
             if (isSelected) {
                 Box(
@@ -479,5 +548,165 @@ fun AlbumCard(
                 }
             }
         }
+    }
+}
+
+@Composable
+fun AudiobookAlbumCard(
+    album: AudiobookAlbum,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Card(
+        modifier = modifier
+            .width(140.dp)
+            .clickable(onClick = onClick),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column {
+            CoverArt(
+                coverArtPath = album.coverArtPath,
+                coverArtUri = album.coverArtUri,
+                modifier = Modifier
+                    .size(width = 140.dp, height = 140.dp)
+                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+            )
+
+            Column(
+                modifier = Modifier.padding(12.dp)
+            ) {
+                Text(
+                    text = album.albumName,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+                Text(
+                    text = "${album.trackCount}개 트랙",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+fun AudiobookTracksDialog(
+    album: AudiobookAlbum,
+    onDismiss: () -> Unit,
+    onTrackClick: (AudioFile) -> Unit,
+    onPlayAll: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+        modifier = Modifier
+            .fillMaxWidth(0.9f)
+            .padding(16.dp),
+        title = {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = album.albumName,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${album.trackCount}개 트랙",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                IconButton(onClick = onPlayAll) {
+                    Icon(
+                        imageVector = Icons.Default.PlayArrow,
+                        contentDescription = "전체 재생",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
+            }
+        },
+        text = {
+            LazyColumn(
+                modifier = Modifier.height(400.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                itemsIndexed(album.tracks) { index, track ->
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { onTrackClick(track) }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "${index + 1}",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.width(32.dp)
+                        )
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = track.displayTitle,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                            Text(
+                                text = formatDuration(track.duration),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        Icon(
+                            imageVector = Icons.Default.PlayArrow,
+                            contentDescription = "재생",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.size(24.dp)
+                        )
+                    }
+                    if (index < album.tracks.size - 1) {
+                        Divider(
+                            modifier = Modifier.padding(start = 32.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기")
+            }
+        }
+    )
+}
+
+private fun formatDuration(durationMs: Long): String {
+    val totalSeconds = durationMs / 1000
+    val hours = totalSeconds / 3600
+    val minutes = (totalSeconds % 3600) / 60
+    val seconds = totalSeconds % 60
+    
+    return if (hours > 0) {
+        String.format("%d:%02d:%02d", hours, minutes, seconds)
+    } else {
+        String.format("%d:%02d", minutes, seconds)
     }
 }
