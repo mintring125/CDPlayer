@@ -1,0 +1,5 @@
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/games/gomoku/GomokuScreen.kt:91:10 Expecting ')'
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/games/mancala/MancalaScreen.kt:85:10 Expecting ')'
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/games/othello/OthelloScreen.kt:100:10 Expecting ')'
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:322:15 Unexpected tokens (use ';' to separate expressions on the same line)
+FAILURE: Build failed with an exception.

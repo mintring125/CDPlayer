@@ -1,0 +1,12 @@
+e: [ksp] D:/CD Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt: (489, 35): Function declaration must have a name
+e: Error occurred in KSP, check log for detail
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:322:15 Unexpected tokens (use ';' to separate expressions on the same line)
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:5 Expecting a top level declaration
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:12 Expecting a top level declaration
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:13 Expecting a top level declaration
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:29 Expecting a top level declaration
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:31 Expecting a top level declaration
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:35 Expecting a top level declaration
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:489:44 Unexpected tokens (use ';' to separate expressions on the same line)
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/player/PlayerScreen.kt:512:1 Expecting a top level declaration
+FAILURE: Build failed with an exception.

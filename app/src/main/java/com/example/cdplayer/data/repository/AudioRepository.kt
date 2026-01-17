@@ -114,4 +114,7 @@ class AudioRepository @Inject constructor(
 
     suspend fun getCountByType(type: AudioType): Int =
         audioFileDao.getCountByType(type.name)
+
+    suspend fun updateAlbumForIds(ids: List<Long>, newAlbum: String) =
+        audioFileDao.updateAlbumForIds(ids, newAlbum)
 }

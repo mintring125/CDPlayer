@@ -153,7 +153,8 @@ fun LibraryScreen(
                         },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onEditMetadata = { onNavigateToEditMetadata(it.id) },
-                        onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) }
+                        onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) },
+                        onToggleFavorite = { viewModel.toggleFavorite(it) }
                     )
                 }
                 LibraryTab.ARTISTS -> {
@@ -191,7 +192,8 @@ fun TrackList(
     onAddToQueue: (AudioFile) -> Unit,
     onEditMetadata: (AudioFile) -> Unit,
     onMoveToMusic: ((AudioFile) -> Unit)? = null,
-    onMoveToAudiobook: ((AudioFile) -> Unit)? = null
+    onMoveToAudiobook: ((AudioFile) -> Unit)? = null,
+    onToggleFavorite: ((Long) -> Unit)? = null
 ) {
     if (tracks.isEmpty()) {
         EmptyState(
@@ -210,7 +212,9 @@ fun TrackList(
                     onAddToQueue = { onAddToQueue(tracks[index]) },
                     onEditMetadata = { onEditMetadata(tracks[index]) },
                     onMoveToMusic = onMoveToMusic?.let { handler -> { handler(tracks[index]) } },
-                    onMoveToAudiobook = onMoveToAudiobook?.let { handler -> { handler(tracks[index]) } }
+                    onMoveToAudiobook = onMoveToAudiobook?.let { handler -> { handler(tracks[index]) } },
+                    isFavorite = tracks[index].isFavorite,
+                    onToggleFavorite = onToggleFavorite?.let { handler -> { handler(tracks[index].id) } }
                 )
             }
         }

@@ -1,0 +1,8 @@
+61a9044 Rename 부엉이 to 부옥이, integrate victory videos and interactive sound effects across all games
+27362d0 Feat: Update player UI and add favorite functionality
+49d5afd Implement theme persistence and update UI components
+532da3e Update DictionaryRepository and other changes
+3095df2 Fix playback stop on rotation and persist cover art
+b8b9983 Refactor: Relocate move album feature, redesign theme, and fix UI
+485788f feat: Add move album to music/audiobook and fix player UI
+05b06e0 Implement Favorites feature, Redesign Home Screen, and Fix Build Errors

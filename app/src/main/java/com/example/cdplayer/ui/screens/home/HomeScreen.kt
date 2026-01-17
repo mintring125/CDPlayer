@@ -23,6 +23,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.MoreVert
@@ -72,6 +73,8 @@ import com.example.cdplayer.ui.components.AudioItem
 import com.example.cdplayer.ui.components.BulkActionToolbar
 import com.example.cdplayer.ui.components.CoverArt
 import com.example.cdplayer.ui.components.FolderPickerDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material.icons.filled.GroupWork
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -89,8 +92,11 @@ fun HomeScreen(
     val audiobookAlbums by viewModel.audiobookAlbums.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
     val selectionState by viewModel.selectionState.collectAsState()
+    val audiobookSelectionState by viewModel.audiobookSelectionState.collectAsState()
     var showFolderPicker by remember { mutableStateOf(false) }
     var selectedAudiobookAlbum by remember { mutableStateOf<AudiobookAlbum?>(null) }
+    var showAlbumNameDialog by remember { mutableStateOf(false) }
+    var newAlbumName by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -196,7 +202,9 @@ fun HomeScreen(
                                         onNavigateToPlayer()
                                     }
                                 },
-                                showFavoriteIcon = true
+                                showFavoriteIcon = true,
+                                isFavorite = audioFile.isFavorite,
+                                onFavoriteClick = { viewModel.toggleFavorite(audioFile.id) }
                             )
                         }
                     }
@@ -208,8 +216,12 @@ fun HomeScreen(
                 if (audiobookAlbums.isNotEmpty()) {
                     item {
                         SectionHeader(
-                            title = "오디오북",
-                            subtitle = "${audiobookAlbums.size}개 앨범",
+                            title = if (audiobookSelectionState.isSelectionMode) 
+                                "${audiobookSelectionState.selectedIds.size}개 선택됨" 
+                            else "오디오북",
+                            subtitle = if (audiobookSelectionState.isSelectionMode) 
+                                "길게 누르면 선택" 
+                            else "${audiobookAlbums.size}개 앨범",
                             modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
                         )
                     }
@@ -223,9 +235,59 @@ fun HomeScreen(
                                 AudiobookAlbumCard(
                                     album = album,
                                     onClick = {
-                                        selectedAudiobookAlbum = album
-                                    }
+                                        if (audiobookSelectionState.isSelectionMode) {
+                                            // In selection mode, toggle selection for all tracks in album
+                                            album.tracks.forEach { track ->
+                                                if (track.id !in audiobookSelectionState.selectedIds) {
+                                                    viewModel.toggleAudiobookSelection(track.id)
+                                                }
+                                            }
+                                        } else {
+                                            selectedAudiobookAlbum = album
+                                        }
+                                    },
+                                    onLongClick = {
+                                        // Start selection mode and select all tracks in this album
+                                        album.tracks.forEach { track ->
+                                            if (track.id !in audiobookSelectionState.selectedIds) {
+                                                viewModel.toggleAudiobookSelection(track.id)
+                                            }
+                                        }
+                                    },
+                                    isSelected = album.tracks.any { it.id in audiobookSelectionState.selectedIds }
                                 )
+                            }
+                        }
+                    }
+
+                    // Audiobook selection toolbar
+                    if (audiobookSelectionState.isSelectionMode) {
+                        item {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                TextButton(
+                                    onClick = { viewModel.clearAudiobookSelection() }
+                                ) {
+                                    Text("취소")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        newAlbumName = ""
+                                        showAlbumNameDialog = true
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.GroupWork,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("앨범으로 묶기")
+                                }
                             }
                         }
                     }
@@ -265,7 +327,9 @@ fun HomeScreen(
                                     },
                                     isSelectionMode = selectionState.isSelectionMode,
                                     isSelected = audioFile.id in selectionState.selectedIds,
-                                    showFavoriteIcon = true
+                                    showFavoriteIcon = true,
+                                    isFavorite = audioFile.isFavorite,
+                                    onFavoriteClick = { viewModel.toggleFavorite(audioFile.id) }
                                 )
                             }
                         }
@@ -343,6 +407,49 @@ fun HomeScreen(
                         viewModel.playTracks(album.tracks, 0)
                         selectedAudiobookAlbum = null
                         onNavigateToPlayer()
+                    }
+                }
+            )
+        }
+
+        // Album name input dialog
+        if (showAlbumNameDialog) {
+            AlertDialog(
+                onDismissRequest = { showAlbumNameDialog = false },
+                title = { Text("앨범으로 묶기") },
+                text = {
+                    Column {
+                        Text(
+                            text = "${audiobookSelectionState.selectedIds.size}개 트랙을 선택함",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = newAlbumName,
+                            onValueChange = { newAlbumName = it },
+                            label = { Text("새 앨범 이름") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (newAlbumName.isNotBlank()) {
+                                viewModel.groupSelectedAsAlbum(newAlbumName.trim())
+                                showAlbumNameDialog = false
+                            }
+                        },
+                        enabled = newAlbumName.isNotBlank()
+                    ) {
+                        Text("확인")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showAlbumNameDialog = false }) {
+                        Text("취소")
                     }
                 }
             )
@@ -458,7 +565,9 @@ fun AlbumCard(
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     isAudiobook: Boolean = false,
-    showFavoriteIcon: Boolean = false
+    showFavoriteIcon: Boolean = false,
+    isFavorite: Boolean = false,
+    onFavoriteClick: (() -> Unit)? = null
 ) {
     val height = if (isAudiobook) 210.dp else 140.dp
     
@@ -516,18 +625,19 @@ fun AlbumCard(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .size(24.dp)
+                        .size(28.dp)
+                        .clip(RoundedCornerShape(14.dp))
                         .background(
-                            color = Color.Black.copy(alpha = 0.4f),
-                            shape = RoundedCornerShape(12.dp)
-                        ),
+                            color = Color.Black.copy(alpha = 0.4f)
+                        )
+                        .clickable { onFavoriteClick?.invoke() },
                     contentAlignment = Alignment.Center
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Favorite,
-                        contentDescription = "즐겨찾기",
-                        tint = Color(0xFFFF4081),
-                        modifier = Modifier.size(16.dp)
+                        imageVector = if (isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                        contentDescription = if (isFavorite) "즐겨찾기 해제" else "즐겨찾기 추가",
+                        tint = if (isFavorite) Color(0xFFFF4081) else Color.White,
+                        modifier = Modifier.size(18.dp)
                     )
                 }
             }
@@ -551,47 +661,72 @@ fun AlbumCard(
     }
 }
 
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 fun AudiobookAlbumCard(
     album: AudiobookAlbum,
     onClick: () -> Unit,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    onLongClick: () -> Unit = {},
+    isSelected: Boolean = false
 ) {
     Card(
         modifier = modifier
             .width(140.dp)
-            .clickable(onClick = onClick),
+            .combinedClickable(
+                onClick = onClick,
+                onLongClick = onLongClick
+            ),
         shape = RoundedCornerShape(12.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant
+            containerColor = if (isSelected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant
         )
     ) {
-        Column {
-            CoverArt(
-                coverArtPath = album.coverArtPath,
-                coverArtUri = album.coverArtUri,
-                modifier = Modifier
-                    .size(width = 140.dp, height = 140.dp)
-                    .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-            )
+        Box {
+            Column {
+                CoverArt(
+                    coverArtPath = album.coverArtPath,
+                    coverArtUri = album.coverArtUri,
+                    modifier = Modifier
+                        .size(width = 140.dp, height = 140.dp)
+                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                )
 
-            Column(
-                modifier = Modifier.padding(12.dp)
-            ) {
-                Text(
-                    text = album.albumName,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.Medium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-                Text(
-                    text = "${album.trackCount}개 트랙",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Column(
+                    modifier = Modifier.padding(12.dp)
+                ) {
+                    Text(
+                        text = album.albumName,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${album.trackCount}개 트랙",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+            }
+
+            // Selection overlay
+            if (isSelected) {
+                Box(
+                    modifier = Modifier
+                        .matchParentSize()
+                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.2f)),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.CheckCircle,
+                        contentDescription = "선택됨",
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(32.dp)
+                    )
+                }
             }
         }
     }
@@ -651,14 +786,23 @@ fun AudiobookTracksDialog(
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(8.dp))
                             .clickable { onTrackClick(track) }
-                            .padding(12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                            .padding(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // 트랙 앨범 커버
+                        CoverArt(
+                            coverArtPath = track.coverArtPath,
+                            coverArtUri = track.coverArtUri,
+                            modifier = Modifier
+                                .size(40.dp)
+                                .clip(RoundedCornerShape(6.dp))
+                        )
                         Text(
                             text = "${index + 1}",
                             style = MaterialTheme.typography.bodyMedium,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(32.dp)
+                            modifier = Modifier.width(24.dp)
                         )
                         Column(modifier = Modifier.weight(1f)) {
                             Text(

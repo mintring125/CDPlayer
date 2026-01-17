@@ -93,4 +93,7 @@ interface AudioFileDao {
 
     @Query("SELECT COUNT(*) FROM audio_files WHERE type = :type")
     suspend fun getCountByType(type: String): Int
+
+    @Query("UPDATE audio_files SET album = :newAlbum WHERE id IN (:ids)")
+    suspend fun updateAlbumForIds(ids: List<Long>, newAlbum: String)
 }

@@ -1,0 +1,3 @@
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/games/hex/HexScreen.kt:116:41 Unresolved reference: TextAlign
+e: file:///D:/CD%20Player/app/src/main/java/com/example/cdplayer/ui/screens/games/ninemensmorris/NineMensMorrisScreen.kt:128:41 Unresolved reference: TextAlign
+FAILURE: Build failed with an exception.

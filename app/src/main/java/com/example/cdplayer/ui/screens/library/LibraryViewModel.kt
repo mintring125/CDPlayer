@@ -107,4 +107,13 @@ class LibraryViewModel @Inject constructor(
             audioRepository.moveAlbumToType(albumName, type)
         }
     }
+
+    fun toggleFavorite(audioId: Long) {
+        viewModelScope.launch {
+            val audio = audioRepository.getAudioFileById(audioId)
+            audio?.let {
+                audioRepository.updateAudioFile(it.copy(isFavorite = !it.isFavorite))
+            }
+        }
+    }
 }

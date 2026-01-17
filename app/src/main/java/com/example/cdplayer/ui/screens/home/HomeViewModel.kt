@@ -263,4 +263,30 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    // Audiobook selection state for multi-select album grouping
+    private val _audiobookSelectionState = MutableStateFlow(SelectionState())
+    val audiobookSelectionState: StateFlow<SelectionState> = _audiobookSelectionState.asStateFlow()
+
+    fun toggleAudiobookSelection(audioId: Long) {
+        _audiobookSelectionState.update { it.toggle(audioId) }
+    }
+
+    fun clearAudiobookSelection() {
+        _audiobookSelectionState.update { it.clear() }
+    }
+
+    fun groupSelectedAsAlbum(newAlbumName: String) {
+        val selectedIds = _audiobookSelectionState.value.selectedIds.toList()
+        if (selectedIds.isEmpty() || newAlbumName.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                audioRepository.updateAlbumForIds(selectedIds, newAlbumName)
+                clearAudiobookSelection()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "앨범 그룹화 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
 }
