@@ -743,8 +743,8 @@ fun AudiobookTracksDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
         modifier = Modifier
-            .fillMaxWidth(0.9f)
-            .padding(16.dp),
+            .fillMaxWidth(0.95f)
+            .padding(8.dp),
         title = {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -754,14 +754,14 @@ fun AudiobookTracksDialog(
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
                         text = album.albumName,
-                        style = MaterialTheme.typography.titleLarge,
+                        style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.Bold,
-                        maxLines = 2,
+                        maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
                         text = "${album.trackCount}개 트랙",
-                        style = MaterialTheme.typography.bodyMedium,
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
@@ -770,66 +770,78 @@ fun AudiobookTracksDialog(
                         imageVector = Icons.Default.PlayArrow,
                         contentDescription = "전체 재생",
                         tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.size(32.dp)
+                        modifier = Modifier.size(28.dp)
                     )
                 }
             }
         },
         text = {
-            LazyColumn(
-                modifier = Modifier.height(400.dp),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+            // Horizontal scrolling layout like home screen
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                contentPadding = PaddingValues(horizontal = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
                 itemsIndexed(album.tracks) { index, track ->
-                    Row(
+                    // Card with same ratio as home audiobook cards (140x210)
+                    Card(
                         modifier = Modifier
-                            .fillMaxWidth()
-                            .clip(RoundedCornerShape(8.dp))
-                            .clickable { onTrackClick(track) }
-                            .padding(8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            .width(140.dp)
+                            .clickable { onTrackClick(track) },
+                        shape = RoundedCornerShape(12.dp),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                        )
                     ) {
-                        // 트랙 앨범 커버
-                        CoverArt(
-                            coverArtPath = track.coverArtPath,
-                            coverArtUri = track.coverArtUri,
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(RoundedCornerShape(6.dp))
-                        )
-                        Text(
-                            text = "${index + 1}",
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.width(24.dp)
-                        )
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = track.displayTitle,
-                                style = MaterialTheme.typography.bodyMedium,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                            Text(
-                                text = formatDuration(track.duration),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        Box {
+                            Column {
+                                // Tall album cover (same ratio as home: 140x210)
+                                CoverArt(
+                                    coverArtPath = track.coverArtPath,
+                                    coverArtUri = track.coverArtUri,
+                                    modifier = Modifier
+                                        .size(width = 140.dp, height = 210.dp)
+                                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                )
+                                // Minimal text info
+                                Column(
+                                    modifier = Modifier.padding(10.dp)
+                                ) {
+                                    Text(
+                                        text = track.displayTitle,
+                                        style = MaterialTheme.typography.bodySmall,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = formatDuration(track.duration),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        maxLines = 1
+                                    )
+                                }
+                            }
+                            // Track number badge
+                            Box(
+                                modifier = Modifier
+                                    .align(Alignment.TopStart)
+                                    .padding(6.dp)
+                                    .size(24.dp)
+                                    .background(
+                                        color = Color.Black.copy(alpha = 0.6f),
+                                        shape = RoundedCornerShape(12.dp)
+                                    ),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = "${index + 1}",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
                         }
-                        Icon(
-                            imageVector = Icons.Default.PlayArrow,
-                            contentDescription = "재생",
-                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                            modifier = Modifier.size(24.dp)
-                        )
-                    }
-                    if (index < album.tracks.size - 1) {
-                        Divider(
-                            modifier = Modifier.padding(start = 32.dp),
-                            color = MaterialTheme.colorScheme.outlineVariant
-                        )
                     }
                 }
             }
