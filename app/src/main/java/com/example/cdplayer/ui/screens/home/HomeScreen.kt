@@ -1,7 +1,11 @@
 package com.example.cdplayer.ui.screens.home
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkHorizontally
+import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -75,6 +79,7 @@ import com.example.cdplayer.ui.components.CoverArt
 import com.example.cdplayer.ui.components.FolderPickerDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.GroupWork
+import androidx.compose.material.icons.filled.Delete
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -97,6 +102,7 @@ fun HomeScreen(
     var selectedAudiobookAlbum by remember { mutableStateOf<AudiobookAlbum?>(null) }
     var showAlbumNameDialog by remember { mutableStateOf(false) }
     var newAlbumName by remember { mutableStateOf("") }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -232,13 +238,22 @@ fun HomeScreen(
                             horizontalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
                             items(audiobookAlbums) { album ->
+                                val isAlbumSelected = album.tracks.any { it.id in audiobookSelectionState.selectedIds }
                                 AudiobookAlbumCard(
                                     album = album,
                                     onClick = {
                                         if (audiobookSelectionState.isSelectionMode) {
                                             // In selection mode, toggle selection for all tracks in album
-                                            album.tracks.forEach { track ->
-                                                if (track.id !in audiobookSelectionState.selectedIds) {
+                                            if (isAlbumSelected) {
+                                                // Deselect all tracks in this album
+                                                album.tracks.forEach { track ->
+                                                    if (track.id in audiobookSelectionState.selectedIds) {
+                                                        viewModel.toggleAudiobookSelection(track.id)
+                                                    }
+                                                }
+                                            } else {
+                                                // Select all tracks in this album
+                                                album.tracks.forEach { track ->
                                                     viewModel.toggleAudiobookSelection(track.id)
                                                 }
                                             }
@@ -254,7 +269,7 @@ fun HomeScreen(
                                             }
                                         }
                                     },
-                                    isSelected = album.tracks.any { it.id in audiobookSelectionState.selectedIds }
+                                    isSelected = isAlbumSelected
                                 )
                             }
                         }
@@ -287,6 +302,21 @@ fun HomeScreen(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("앨범으로 묶기")
+                                }
+                                TextButton(
+                                    onClick = { showDeleteConfirmDialog = true }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.error
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text(
+                                        text = "파일 삭제",
+                                        color = MaterialTheme.colorScheme.error
+                                    )
                                 }
                             }
                         }
@@ -408,6 +438,9 @@ fun HomeScreen(
                         selectedAudiobookAlbum = null
                         onNavigateToPlayer()
                     }
+                },
+                onRemoveFromAlbum = { track ->
+                    viewModel.removeFromAlbum(track)
                 }
             )
         }
@@ -449,6 +482,46 @@ fun HomeScreen(
                 },
                 dismissButton = {
                     TextButton(onClick = { showAlbumNameDialog = false }) {
+                        Text("취소")
+                    }
+                }
+            )
+        }
+
+        // Delete confirmation dialog
+        if (showDeleteConfirmDialog) {
+            AlertDialog(
+                onDismissRequest = { showDeleteConfirmDialog = false },
+                title = { Text("파일 삭제") },
+                text = {
+                    Column {
+                        Text(
+                            text = "${audiobookSelectionState.selectedIds.size}개 파일을 삭제하시겠습니까?",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "이 작업은 되돌릴 수 없습니다. 실제 파일이 기기에서 삭제됩니다.",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            viewModel.deleteSelectedAudiobooks()
+                            showDeleteConfirmDialog = false
+                        }
+                    ) {
+                        Text(
+                            text = "삭제",
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showDeleteConfirmDialog = false }) {
                         Text("취소")
                     }
                 }
@@ -737,8 +810,14 @@ fun AudiobookTracksDialog(
     album: AudiobookAlbum,
     onDismiss: () -> Unit,
     onTrackClick: (AudioFile) -> Unit,
-    onPlayAll: () -> Unit
+    onPlayAll: () -> Unit,
+    onRemoveFromAlbum: ((AudioFile) -> Unit)? = null
 ) {
+    // 제거된 트랙들을 추적 (애니메이션용)
+    var removedTrackIds by remember { mutableStateOf(setOf<Long>()) }
+    // 표시할 트랙 수 (제거된 것 제외)
+    val visibleTrackCount = album.tracks.count { it.id !in removedTrackIds }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -760,7 +839,7 @@ fun AudiobookTracksDialog(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${album.trackCount}개 트랙",
+                        text = "${visibleTrackCount}개 트랙",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -782,64 +861,108 @@ fun AudiobookTracksDialog(
                 contentPadding = PaddingValues(horizontal = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                itemsIndexed(album.tracks) { index, track ->
-                    // Card with same ratio as home audiobook cards (140x210)
-                    Card(
-                        modifier = Modifier
-                            .width(140.dp)
-                            .clickable { onTrackClick(track) },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = MaterialTheme.colorScheme.surfaceVariant
+                itemsIndexed(
+                    items = album.tracks,
+                    key = { _, track -> track.id }
+                ) { index, track ->
+                    val isVisible = track.id !in removedTrackIds
+
+                    AnimatedVisibility(
+                        visible = isVisible,
+                        exit = slideOutHorizontally(
+                            targetOffsetX = { -it },
+                            animationSpec = tween(300)
+                        ) + shrinkHorizontally(
+                            animationSpec = tween(300)
+                        ) + fadeOut(
+                            animationSpec = tween(200)
                         )
                     ) {
-                        Box {
-                            Column {
-                                // Tall album cover (same ratio as home: 140x210)
-                                CoverArt(
-                                    coverArtPath = track.coverArtPath,
-                                    coverArtUri = track.coverArtUri,
+                        // Card with same ratio as home audiobook cards (140x210)
+                        Card(
+                            modifier = Modifier
+                                .width(140.dp)
+                                .clickable { onTrackClick(track) },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surfaceVariant
+                            )
+                        ) {
+                            Box {
+                                Column {
+                                    // Tall album cover (same ratio as home: 140x210)
+                                    CoverArt(
+                                        coverArtPath = track.coverArtPath,
+                                        coverArtUri = track.coverArtUri,
+                                        modifier = Modifier
+                                            .size(width = 140.dp, height = 210.dp)
+                                            .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
+                                    )
+                                    // Minimal text info
+                                    Column(
+                                        modifier = Modifier.padding(10.dp)
+                                    ) {
+                                        Text(
+                                            text = track.displayTitle,
+                                            style = MaterialTheme.typography.bodySmall,
+                                            fontWeight = FontWeight.Medium,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis
+                                        )
+                                        Text(
+                                            text = formatDuration(track.duration),
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                            maxLines = 1
+                                        )
+                                    }
+                                }
+                                // Track number badge
+                                Box(
                                     modifier = Modifier
-                                        .size(width = 140.dp, height = 210.dp)
-                                        .clip(RoundedCornerShape(topStart = 12.dp, topEnd = 12.dp))
-                                )
-                                // Minimal text info
-                                Column(
-                                    modifier = Modifier.padding(10.dp)
+                                        .align(Alignment.TopStart)
+                                        .padding(6.dp)
+                                        .size(24.dp)
+                                        .background(
+                                            color = Color.Black.copy(alpha = 0.6f),
+                                            shape = RoundedCornerShape(12.dp)
+                                        ),
+                                    contentAlignment = Alignment.Center
                                 ) {
                                     Text(
-                                        text = track.displayTitle,
-                                        style = MaterialTheme.typography.bodySmall,
-                                        fontWeight = FontWeight.Medium,
-                                        maxLines = 1,
-                                        overflow = TextOverflow.Ellipsis
-                                    )
-                                    Text(
-                                        text = formatDuration(track.duration),
+                                        text = "${index + 1}",
                                         style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        maxLines = 1
+                                        color = Color.White,
+                                        fontWeight = FontWeight.Bold
                                     )
                                 }
-                            }
-                            // Track number badge
-                            Box(
-                                modifier = Modifier
-                                    .align(Alignment.TopStart)
-                                    .padding(6.dp)
-                                    .size(24.dp)
-                                    .background(
-                                        color = Color.Black.copy(alpha = 0.6f),
-                                        shape = RoundedCornerShape(12.dp)
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Text(
-                                    text = "${index + 1}",
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = Color.White,
-                                    fontWeight = FontWeight.Bold
-                                )
+                                // Remove from album button
+                                onRemoveFromAlbum?.let { removeHandler ->
+                                    Box(
+                                        modifier = Modifier
+                                            .align(Alignment.TopEnd)
+                                            .padding(6.dp)
+                                            .size(24.dp)
+                                            .background(
+                                                color = Color.Black.copy(alpha = 0.6f),
+                                                shape = RoundedCornerShape(12.dp)
+                                            )
+                                            .clickable {
+                                                // 먼저 UI에서 애니메이션으로 제거 표시
+                                                removedTrackIds = removedTrackIds + track.id
+                                                // 실제 데이터 삭제
+                                                removeHandler(track)
+                                            },
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Icon(
+                                            imageVector = Icons.Default.Close,
+                                            contentDescription = "앨범에서 빼기",
+                                            tint = Color.White,
+                                            modifier = Modifier.size(16.dp)
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

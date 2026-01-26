@@ -10,10 +10,10 @@ data class SelectionState(
         } else {
             selectedIds + id
         }
-        
+
         return copy(
             selectedIds = newSelectedIds,
-            isSelectionMode = newSelectedIds.isNotEmpty() || (isSelectionMode && newSelectedIds.isEmpty())
+            isSelectionMode = newSelectedIds.isNotEmpty()
         )
     }
 

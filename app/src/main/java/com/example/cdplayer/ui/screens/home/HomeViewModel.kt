@@ -264,6 +264,17 @@ class HomeViewModel @Inject constructor(
         }
     }
 
+    fun removeFromAlbum(audioFile: AudioFile) {
+        viewModelScope.launch {
+            try {
+                // Set album to the track title to effectively "remove" it from the album
+                audioRepository.updateAlbumForIds(listOf(audioFile.id), audioFile.title)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "앨범에서 빼기 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
+
     // Audiobook selection state for multi-select album grouping
     private val _audiobookSelectionState = MutableStateFlow(SelectionState())
     val audiobookSelectionState: StateFlow<SelectionState> = _audiobookSelectionState.asStateFlow()
@@ -286,6 +297,32 @@ class HomeViewModel @Inject constructor(
                 clearAudiobookSelection()
             } catch (e: Exception) {
                 _uiState.update { it.copy(error = "앨범 그룹화 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
+
+    fun deleteSelectedAudiobooks() {
+        val selectedIds = _audiobookSelectionState.value.selectedIds.toList()
+        if (selectedIds.isEmpty()) return
+
+        viewModelScope.launch {
+            try {
+                val currentAudiobooks = allAudiobooks.value
+                selectedIds.forEach { id ->
+                    val audioFile = currentAudiobooks.find { it.id == id }
+                    if (audioFile != null) {
+                        // 실제 파일 삭제
+                        val file = java.io.File(audioFile.path)
+                        if (file.exists()) {
+                            file.delete()
+                        }
+                        // DB에서 삭제
+                        audioRepository.deleteAudioFileById(id)
+                    }
+                }
+                clearAudiobookSelection()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "파일 삭제 중 오류 발생: ${e.message}") }
             }
         }
     }

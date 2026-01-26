@@ -20,7 +20,10 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.QueueMusic
 import androidx.compose.material.icons.filled.Bookmark
 import androidx.compose.material.icons.filled.BookmarkBorder
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.foundation.clickable
 import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.List
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.Timer
@@ -196,6 +199,22 @@ fun PlayerScreen(
                                 Icon(Icons.Default.BookmarkBorder, contentDescription = null)
                             }
                         )
+                        // 챕터 메뉴 (챕터가 있을 때만 표시)
+                        if (playbackState.hasChapters) {
+                            DropdownMenuItem(
+                                text = { Text("챕터") },
+                                onClick = {
+                                    showMenu = false
+                                    viewModel.showChapterDialog()
+                                },
+                                leadingIcon = {
+                                    Icon(Icons.Default.List, contentDescription = null)
+                                },
+                                trailingIcon = {
+                                    Text("${playbackState.chapters.size}개")
+                                }
+                            )
+                        }
                     }
                 }
             )
@@ -423,7 +442,11 @@ fun PlayerScreen(
     // Bookmark Dialog
     if (uiState.showBookmarkDialog) {
         BookmarkDialog(
+            bookmarks = bookmarks,
+            currentPosition = playbackState.currentPosition,
             onAddBookmark = { viewModel.addBookmark(it) },
+            onSeekToBookmark = { viewModel.seekToBookmark(it) },
+            onDeleteBookmark = { viewModel.deleteBookmark(it.id) },
             onDismiss = { viewModel.hideBookmarkDialog() }
         )
     }
@@ -464,6 +487,16 @@ fun PlayerScreen(
                 )
             }
         }
+    }
+
+    // Chapter Dialog
+    if (uiState.showChapterDialog && playbackState.hasChapters) {
+        ChapterDialog(
+            chapters = playbackState.chapters,
+            currentChapter = playbackState.currentChapter,
+            onChapterSelected = { viewModel.seekToChapter(it) },
+            onDismiss = { viewModel.hideChapterDialog() }
+        )
     }
 }
 
@@ -541,30 +574,186 @@ fun SleepTimerDialog(
 
 @Composable
 fun BookmarkDialog(
+    bookmarks: List<com.example.cdplayer.domain.model.Bookmark>,
+    currentPosition: Long,
     onAddBookmark: (String?) -> Unit,
+    onSeekToBookmark: (com.example.cdplayer.domain.model.Bookmark) -> Unit,
+    onDeleteBookmark: (com.example.cdplayer.domain.model.Bookmark) -> Unit,
     onDismiss: () -> Unit
 ) {
     var note by remember { mutableStateOf("") }
+    var showAddForm by remember { mutableStateOf(false) }
+
+    // Format current position
+    val currentPositionFormatted = remember(currentPosition) {
+        val totalSeconds = currentPosition / 1000
+        val hours = totalSeconds / 3600
+        val minutes = (totalSeconds % 3600) / 60
+        val seconds = totalSeconds % 60
+        if (hours > 0) {
+            String.format("%d:%02d:%02d", hours, minutes, seconds)
+        } else {
+            String.format("%d:%02d", minutes, seconds)
+        }
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
-        title = { Text("북마크 추가") },
-        text = {
-            OutlinedTextField(
-                value = note,
-                onValueChange = { note = it },
-                label = { Text("메모 (선택)") },
-                modifier = Modifier.fillMaxWidth()
-            )
-        },
-        confirmButton = {
-            TextButton(onClick = { onAddBookmark(note.takeIf { it.isNotBlank() }) }) {
-                Text("추가")
+        title = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bookmark,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text("북마크")
             }
         },
-        dismissButton = {
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Add bookmark section
+                if (showAddForm) {
+                    Text(
+                        text = "현재 위치: $currentPositionFormatted",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    OutlinedTextField(
+                        value = note,
+                        onValueChange = { note = it },
+                        label = { Text("메모 (선택)") },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { showAddForm = false }) {
+                            Text("취소")
+                        }
+                        TextButton(
+                            onClick = {
+                                onAddBookmark(note.takeIf { it.isNotBlank() })
+                                note = ""
+                                showAddForm = false
+                            }
+                        ) {
+                            Text("저장")
+                        }
+                    }
+                } else {
+                    TextButton(
+                        onClick = { showAddForm = true },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.BookmarkBorder,
+                            contentDescription = null,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Text("현재 위치에 북마크 추가 ($currentPositionFormatted)")
+                    }
+                }
+
+                if (bookmarks.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    Text(
+                        text = "저장된 북마크 (${bookmarks.size})",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    LazyColumn(
+                        modifier = Modifier.height(200.dp)
+                    ) {
+                        items(bookmarks) { bookmark ->
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
+                                    .padding(12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                // Bookmark info (clickable to seek)
+                                Column(
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .clip(RoundedCornerShape(4.dp))
+                                ) {
+                                    TextButton(
+                                        onClick = { onSeekToBookmark(bookmark) },
+                                        modifier = Modifier.fillMaxWidth()
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalAlignment = Alignment.Start
+                                        ) {
+                                            Text(
+                                                text = bookmark.formattedPosition,
+                                                style = MaterialTheme.typography.titleSmall,
+                                                fontWeight = FontWeight.Bold,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            if (!bookmark.note.isNullOrBlank()) {
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text(
+                                                    text = bookmark.note,
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Delete button
+                                IconButton(
+                                    onClick = { onDeleteBookmark(bookmark) },
+                                    modifier = Modifier.size(32.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Close,
+                                        contentDescription = "삭제",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(8.dp))
+                        }
+                    }
+                } else if (!showAddForm) {
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Text(
+                        text = "저장된 북마크가 없습니다",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
+        },
+        confirmButton = {
             TextButton(onClick = onDismiss) {
-                Text("취소")
+                Text("닫기")
             }
         }
     )
@@ -660,3 +849,76 @@ fun TranslationResultDialog(
     )
 }
 
+@Composable
+fun ChapterDialog(
+    chapters: List<com.example.cdplayer.domain.model.Chapter>,
+    currentChapter: com.example.cdplayer.domain.model.Chapter?,
+    onChapterSelected: (com.example.cdplayer.domain.model.Chapter) -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { 
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.List,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text("챕터 (${chapters.size}개)")
+            }
+        },
+        text = {
+            LazyColumn {
+                items(chapters) { chapter ->
+                    val isCurrentChapter = chapter.index == currentChapter?.index
+                    
+                    TextButton(
+                        onClick = { onChapterSelected(chapter) },
+                        modifier = Modifier.fillMaxWidth(),
+                        shape = RoundedCornerShape(8.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .background(
+                                    if (isCurrentChapter) MaterialTheme.colorScheme.primaryContainer
+                                    else MaterialTheme.colorScheme.surface,
+                                    RoundedCornerShape(8.dp)
+                                )
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Text(
+                                text = chapter.title,
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = if (isCurrentChapter) FontWeight.Bold else FontWeight.Normal,
+                                color = if (isCurrentChapter) MaterialTheme.colorScheme.onPrimaryContainer
+                                        else MaterialTheme.colorScheme.onSurface,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f)
+                            )
+                            
+                            Text(
+                                text = chapter.formatStartTime(),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = if (isCurrentChapter) MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.7f)
+                                        else MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("닫기")
+            }
+        }
+    )
+}

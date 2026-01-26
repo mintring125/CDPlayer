@@ -3,11 +3,15 @@ package com.example.cdplayer.player
 import android.content.Context
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
+import androidx.media3.extractor.metadata.id3.ChapterFrame
 import androidx.media3.exoplayer.ExoPlayer
 import com.example.cdplayer.data.repository.AudioRepository
 import com.example.cdplayer.domain.model.AudioFile
+import com.example.cdplayer.domain.model.Chapter
+import com.example.cdplayer.util.M4bChapterReader
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -24,7 +28,8 @@ import javax.inject.Singleton
 @Singleton
 class MusicPlayerManager @Inject constructor(
     @ApplicationContext private val context: Context,
-    private val audioRepository: AudioRepository
+    private val audioRepository: AudioRepository,
+    private val m4bChapterReader: M4bChapterReader
 ) {
     private var exoPlayer: ExoPlayer? = null
 
@@ -48,10 +53,12 @@ class MusicPlayerManager @Inject constructor(
         override fun onPlaybackStateChanged(state: Int) {
             when (state) {
                 Player.STATE_READY -> {
+                    val chapters = extractChapters()
                     _playbackState.update {
                         it.copy(
                             duration = exoPlayer?.duration ?: 0,
-                            isLoading = false
+                            isLoading = false,
+                            chapters = chapters
                         )
                     }
                 }
@@ -338,5 +345,61 @@ class MusicPlayerManager @Inject constructor(
 
     fun clearError() {
         _playbackState.update { it.copy(error = null) }
+    }
+
+    fun seekToChapter(chapter: Chapter) {
+        seekTo(chapter.startTimeMs)
+    }
+
+    /**
+     * M4B 파일에서 챕터 메타데이터를 추출합니다.
+     * M4B 파일은 M4bChapterReader로, 그 외에는 ExoPlayer의 ChapterFrame으로 추출합니다.
+     */
+    private fun extractChapters(): List<Chapter> {
+        val player = exoPlayer ?: return emptyList()
+        val currentTrack = _playbackState.value.currentTrack ?: return emptyList()
+        val filePath = currentTrack.path
+
+        // 1. M4B/M4A/MP4 파일인 경우 M4bChapterReader 사용
+        val lowerPath = filePath.lowercase()
+        if (lowerPath.endsWith(".m4b") || lowerPath.endsWith(".m4a") || lowerPath.endsWith(".mp4")) {
+            val m4bChapters = m4bChapterReader.extractChapters(filePath)
+            if (m4bChapters.isNotEmpty()) {
+                android.util.Log.d("MusicPlayerManager", "Extracted ${m4bChapters.size} chapters from M4B file")
+                return m4bChapters
+            }
+        }
+
+        // 2. ExoPlayer의 메타데이터에서 챕터 추출 (ID3 태그 등)
+        val chapters = mutableListOf<Chapter>()
+        try {
+            val tracks = player.currentTracks
+            for (group in tracks.groups) {
+                for (i in 0 until group.length) {
+                    val format = group.getTrackFormat(i)
+                    val trackMetadata = format.metadata
+                    if (trackMetadata != null) {
+                        for (j in 0 until trackMetadata.length()) {
+                            when (val entry = trackMetadata.get(j)) {
+                                is ChapterFrame -> {
+                                    chapters.add(
+                                        Chapter(
+                                            index = chapters.size,
+                                            title = entry.id ?: "Chapter ${chapters.size + 1}",
+                                            startTimeMs = entry.startTimeMs.toLong(),
+                                            endTimeMs = entry.endTimeMs.toLong()
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        } catch (e: Exception) {
+            android.util.Log.e("MusicPlayerManager", "Failed to extract chapters from ExoPlayer", e)
+        }
+
+        return chapters.sortedBy { it.startTimeMs }
     }
 }

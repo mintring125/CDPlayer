@@ -37,8 +37,14 @@ object AudioTypeDetector {
         title: String?,
         duration: Long
     ): AudioType {
-        // 1. 폴더 경로로 판단
         val lowerPath = path.lowercase()
+
+        // 0. M4B 확장자는 항상 오디오북
+        if (lowerPath.endsWith(".m4b")) {
+            return AudioType.AUDIOBOOK
+        }
+
+        // 1. 폴더 경로로 판단
         if (audiobookFolderPatterns.any { lowerPath.contains(it) }) {
             return AudioType.AUDIOBOOK
         }

@@ -50,6 +50,8 @@ fun AudioItem(
     onRemoveFromPlaylist: (() -> Unit)? = null,
     onMoveToMusic: (() -> Unit)? = null,
     onMoveToAudiobook: (() -> Unit)? = null,
+    onRemoveFromAlbum: (() -> Unit)? = null,
+    onDelete: (() -> Unit)? = null,
     isSelectionMode: Boolean = false,
     isSelected: Boolean = false,
     onToggleSelection: () -> Unit = {},
@@ -167,7 +169,7 @@ fun AudioItem(
         }
 
         // More options
-        if (onAddToQueue != null || onAddToPlaylist != null || onShowInfo != null || onEditMetadata != null || onRemoveFromPlaylist != null || onMoveToMusic != null || onMoveToAudiobook != null) {
+        if (onAddToQueue != null || onAddToPlaylist != null || onShowInfo != null || onEditMetadata != null || onRemoveFromPlaylist != null || onMoveToMusic != null || onMoveToAudiobook != null || onRemoveFromAlbum != null || onDelete != null) {
             IconButton(onClick = { showMenu = true }) {
                 Icon(
                     imageVector = Icons.Default.MoreVert,
@@ -236,6 +238,29 @@ fun AudioItem(
                 onMoveToAudiobook?.let {
                     DropdownMenuItem(
                         text = { Text("오디오북으로 이동") },
+                        onClick = {
+                            showMenu = false
+                            it()
+                        }
+                    )
+                }
+                onRemoveFromAlbum?.let {
+                    DropdownMenuItem(
+                        text = { Text("앨범에서 빼기") },
+                        onClick = {
+                            showMenu = false
+                            it()
+                        }
+                    )
+                }
+                onDelete?.let {
+                    DropdownMenuItem(
+                        text = {
+                            Text(
+                                "삭제",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        },
                         onClick = {
                             showMenu = false
                             it()

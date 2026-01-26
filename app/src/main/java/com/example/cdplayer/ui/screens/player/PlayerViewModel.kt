@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.example.cdplayer.data.repository.BookmarkRepository
 import com.example.cdplayer.data.repository.DictionaryRepository
 import com.example.cdplayer.domain.model.Bookmark
+import com.example.cdplayer.domain.model.Chapter
 import com.example.cdplayer.player.MusicPlayerManager
 import com.example.cdplayer.player.PlaybackState
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -23,6 +24,7 @@ data class PlayerUiState(
     val showSleepTimerDialog: Boolean = false,
     val showQueueSheet: Boolean = false,
     val showBookmarkDialog: Boolean = false,
+    val showChapterDialog: Boolean = false,
     val showDictionaryDialog: Boolean = false,
     val dictionaryResult: DictionaryResult? = null,
     val isDictionaryLoading: Boolean = false
@@ -195,5 +197,19 @@ class PlayerViewModel @Inject constructor(
 
     fun clearDictionaryResult() {
         _uiState.value = _uiState.value.copy(dictionaryResult = null)
+    }
+
+    // Chapter
+    fun showChapterDialog() {
+        _uiState.value = _uiState.value.copy(showChapterDialog = true)
+    }
+
+    fun hideChapterDialog() {
+        _uiState.value = _uiState.value.copy(showChapterDialog = false)
+    }
+
+    fun seekToChapter(chapter: Chapter) {
+        musicPlayerManager.seekToChapter(chapter)
+        hideChapterDialog()
     }
 }

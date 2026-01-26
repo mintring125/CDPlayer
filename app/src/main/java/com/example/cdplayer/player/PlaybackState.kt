@@ -1,6 +1,7 @@
 package com.example.cdplayer.player
 
 import com.example.cdplayer.domain.model.AudioFile
+import com.example.cdplayer.domain.model.Chapter
 
 data class PlaybackState(
     val currentTrack: AudioFile? = null,
@@ -13,8 +14,14 @@ data class PlaybackState(
     val queue: List<AudioFile> = emptyList(),
     val currentQueueIndex: Int = -1,
     val isLoading: Boolean = false,
-    val error: String? = null
+    val error: String? = null,
+    val chapters: List<Chapter> = emptyList()
 ) {
+    val currentChapter: Chapter?
+        get() = chapters.lastOrNull { currentPosition >= it.startTimeMs }
+
+    val hasChapters: Boolean
+        get() = chapters.isNotEmpty()
     val progress: Float
         get() = if (duration > 0) currentPosition.toFloat() / duration else 0f
 

@@ -24,9 +24,22 @@ import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Album
 import androidx.compose.material.icons.filled.Audiotrack
 import androidx.compose.material.icons.filled.Book
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.GroupWork
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.PlaylistPlay
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.RemoveCircleOutline
+import androidx.compose.material.icons.filled.Sort
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.background
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.DropdownMenu
@@ -78,6 +91,11 @@ fun LibraryScreen(
     val allAlbums by viewModel.allAlbums.collectAsState()
     val allPlaylists by viewModel.allPlaylists.collectAsState()
     val playbackState by viewModel.playbackState.collectAsState()
+    val selectionState by viewModel.selectionState.collectAsState()
+
+    var showAlbumNameDialog by remember { mutableStateOf(false) }
+    var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var newAlbumName by remember { mutableStateOf("") }
 
     val tabs = listOf(
         LibraryTab.MUSIC to "음악",
@@ -87,16 +105,104 @@ fun LibraryScreen(
         LibraryTab.PLAYLISTS to "플레이리스트"
     )
 
+    var showSortMenu by remember { mutableStateOf(false) }
+    val showSortOption = uiState.selectedTab == LibraryTab.MUSIC ||
+                         uiState.selectedTab == LibraryTab.AUDIOBOOKS
+
     Scaffold(
         topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "라이브러리",
-                        fontWeight = FontWeight.Bold
+            if (selectionState.isSelectionMode) {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "${selectionState.selectedIds.size}개 선택됨",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    navigationIcon = {
+                        IconButton(onClick = { viewModel.clearSelection() }) {
+                            Icon(Icons.Default.Close, contentDescription = "취소")
+                        }
+                    },
+                    actions = {
+                        // 앨범으로 묶기 버튼
+                        IconButton(
+                            onClick = {
+                                newAlbumName = ""
+                                showAlbumNameDialog = true
+                            }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.GroupWork,
+                                contentDescription = "앨범으로 묶기"
+                            )
+                        }
+                        // 삭제 버튼
+                        IconButton(
+                            onClick = { showDeleteConfirmDialog = true }
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Delete,
+                                contentDescription = "삭제",
+                                tint = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    colors = androidx.compose.material3.TopAppBarDefaults.topAppBarColors(
+                        containerColor = MaterialTheme.colorScheme.primaryContainer
                     )
-                }
-            )
+                )
+            } else {
+                TopAppBar(
+                    title = {
+                        Text(
+                            text = "라이브러리",
+                            fontWeight = FontWeight.Bold
+                        )
+                    },
+                    actions = {
+                        if (showSortOption) {
+                            Box {
+                                IconButton(onClick = { showSortMenu = true }) {
+                                    Icon(
+                                        imageVector = Icons.Default.Sort,
+                                        contentDescription = "정렬"
+                                    )
+                                }
+                                DropdownMenu(
+                                    expanded = showSortMenu,
+                                    onDismissRequest = { showSortMenu = false }
+                                ) {
+                                    SortOption.entries.forEach { option ->
+                                        DropdownMenuItem(
+                                            text = {
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                                ) {
+                                                    Text(option.displayName)
+                                                    if (uiState.sortOption == option) {
+                                                        Icon(
+                                                            imageVector = Icons.Default.Check,
+                                                            contentDescription = null,
+                                                            modifier = Modifier.size(16.dp),
+                                                            tint = MaterialTheme.colorScheme.primary
+                                                        )
+                                                    }
+                                                }
+                                            },
+                                            onClick = {
+                                                viewModel.setSortOption(option)
+                                                showSortMenu = false
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                )
+            }
         },
         floatingActionButton = {
             if (uiState.selectedTab == LibraryTab.PLAYLISTS) {
@@ -135,12 +241,20 @@ fun LibraryScreen(
                         tracks = allMusic,
                         currentTrackId = playbackState.currentTrack?.id,
                         onTrackClick = { index ->
-                            viewModel.playTracks(allMusic, index)
-                            onNavigateToPlayer()
+                            if (selectionState.isSelectionMode) {
+                                viewModel.toggleSelection(allMusic[index].id)
+                            } else {
+                                viewModel.playTracks(allMusic, index)
+                                onNavigateToPlayer()
+                            }
                         },
+                        onLongClick = { viewModel.toggleSelection(it.id) },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onEditMetadata = { onNavigateToEditMetadata(it.id) },
-                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.AUDIOBOOK) }
+                        onMoveToAudiobook = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.AUDIOBOOK) },
+                        onDelete = { viewModel.deleteFile(it) },
+                        isSelectionMode = selectionState.isSelectionMode,
+                        selectedIds = selectionState.selectedIds
                     )
                 }
                 LibraryTab.AUDIOBOOKS -> {
@@ -148,13 +262,22 @@ fun LibraryScreen(
                         tracks = allAudiobooks,
                         currentTrackId = playbackState.currentTrack?.id,
                         onTrackClick = { index ->
-                            viewModel.playTracks(allAudiobooks, index)
-                            onNavigateToPlayer()
+                            if (selectionState.isSelectionMode) {
+                                viewModel.toggleSelection(allAudiobooks[index].id)
+                            } else {
+                                viewModel.playTracks(allAudiobooks, index)
+                                onNavigateToPlayer()
+                            }
                         },
+                        onLongClick = { viewModel.toggleSelection(it.id) },
                         onAddToQueue = { viewModel.addToQueue(it) },
                         onEditMetadata = { onNavigateToEditMetadata(it.id) },
                         onMoveToMusic = { viewModel.moveAlbumToType(it, com.example.cdplayer.domain.model.AudioType.MUSIC) },
-                        onToggleFavorite = { viewModel.toggleFavorite(it) }
+                        onToggleFavorite = { viewModel.toggleFavorite(it) },
+                        onRemoveFromAlbum = { viewModel.removeFromAlbum(it) },
+                        onDelete = { viewModel.deleteFile(it) },
+                        isSelectionMode = selectionState.isSelectionMode,
+                        selectedIds = selectionState.selectedIds
                     )
                 }
                 LibraryTab.ARTISTS -> {
@@ -182,6 +305,94 @@ fun LibraryScreen(
             }
         }
     }
+
+    // Album name input dialog
+    if (showAlbumNameDialog) {
+        AlertDialog(
+            onDismissRequest = { showAlbumNameDialog = false },
+            title = { Text("앨범으로 묶기") },
+            text = {
+                Column {
+                    Text(
+                        text = "${selectionState.selectedIds.size}개 트랙을 선택함",
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Spacer(modifier = Modifier.height(16.dp))
+                    OutlinedTextField(
+                        value = newAlbumName,
+                        onValueChange = { newAlbumName = it },
+                        label = { Text("새 앨범 이름") },
+                        singleLine = true,
+                        modifier = Modifier.fillMaxWidth()
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        if (newAlbumName.isNotBlank()) {
+                            viewModel.groupSelectedAsAlbum(newAlbumName.trim())
+                            showAlbumNameDialog = false
+                        }
+                    },
+                    enabled = newAlbumName.isNotBlank()
+                ) {
+                    Text("확인")
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showAlbumNameDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
+
+    // Delete confirmation dialog
+    if (showDeleteConfirmDialog) {
+        AlertDialog(
+            onDismissRequest = { showDeleteConfirmDialog = false },
+            title = {
+                Text(
+                    text = "파일 삭제",
+                    color = MaterialTheme.colorScheme.error
+                )
+            },
+            text = {
+                Column {
+                    Text(
+                        text = "${selectionState.selectedIds.size}개 파일을 삭제하시겠습니까?",
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = "이 작업은 되돌릴 수 없으며, 실제 파일이 삭제됩니다.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        viewModel.deleteSelectedFiles()
+                        showDeleteConfirmDialog = false
+                    }
+                ) {
+                    Text(
+                        text = "삭제",
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = { showDeleteConfirmDialog = false }) {
+                    Text("취소")
+                }
+            }
+        )
+    }
 }
 
 @Composable
@@ -189,11 +400,16 @@ fun TrackList(
     tracks: List<AudioFile>,
     currentTrackId: Long?,
     onTrackClick: (Int) -> Unit,
+    onLongClick: ((AudioFile) -> Unit)? = null,
     onAddToQueue: (AudioFile) -> Unit,
     onEditMetadata: (AudioFile) -> Unit,
     onMoveToMusic: ((AudioFile) -> Unit)? = null,
     onMoveToAudiobook: ((AudioFile) -> Unit)? = null,
-    onToggleFavorite: ((Long) -> Unit)? = null
+    onToggleFavorite: ((Long) -> Unit)? = null,
+    onRemoveFromAlbum: ((AudioFile) -> Unit)? = null,
+    onDelete: ((AudioFile) -> Unit)? = null,
+    isSelectionMode: Boolean = false,
+    selectedIds: Set<Long> = emptySet()
 ) {
     if (tracks.isEmpty()) {
         EmptyState(
@@ -205,16 +421,24 @@ fun TrackList(
             contentPadding = PaddingValues(bottom = 80.dp)
         ) {
             items(tracks.size) { index ->
+                val track = tracks[index]
+                val isSelected = track.id in selectedIds
+
                 AudioItem(
-                    audioFile = tracks[index],
+                    audioFile = track,
                     onClick = { onTrackClick(index) },
-                    isPlaying = currentTrackId == tracks[index].id,
-                    onAddToQueue = { onAddToQueue(tracks[index]) },
-                    onEditMetadata = { onEditMetadata(tracks[index]) },
-                    onMoveToMusic = onMoveToMusic?.let { handler -> { handler(tracks[index]) } },
-                    onMoveToAudiobook = onMoveToAudiobook?.let { handler -> { handler(tracks[index]) } },
-                    isFavorite = tracks[index].isFavorite,
-                    onToggleFavorite = onToggleFavorite?.let { handler -> { handler(tracks[index].id) } }
+                    isPlaying = currentTrackId == track.id,
+                    onAddToQueue = { onAddToQueue(track) },
+                    onEditMetadata = { onEditMetadata(track) },
+                    onMoveToMusic = onMoveToMusic?.let { handler -> { handler(track) } },
+                    onMoveToAudiobook = onMoveToAudiobook?.let { handler -> { handler(track) } },
+                    isFavorite = track.isFavorite,
+                    onToggleFavorite = onToggleFavorite?.let { handler -> { handler(track.id) } },
+                    onRemoveFromAlbum = onRemoveFromAlbum?.let { handler -> { handler(track) } },
+                    onDelete = onDelete?.let { handler -> { handler(track) } },
+                    isSelectionMode = isSelectionMode,
+                    isSelected = isSelected,
+                    onToggleSelection = { onLongClick?.invoke(track) }
                 )
             }
         }
