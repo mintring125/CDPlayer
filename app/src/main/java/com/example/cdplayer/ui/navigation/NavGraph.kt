@@ -11,10 +11,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
+import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
+import androidx.compose.material.icons.outlined.MenuBook
 import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
@@ -44,6 +46,8 @@ import com.example.cdplayer.ui.screens.search.SearchScreen
 import com.example.cdplayer.ui.screens.settings.SettingsScreen
 import com.example.cdplayer.ui.screens.splash.SplashScreen
 import com.example.cdplayer.ui.screens.edit.EditMetadataScreen
+import com.example.cdplayer.ui.screens.books.BooksScreen
+import com.example.cdplayer.ui.screens.pdfviewer.PdfViewerScreen
 import com.example.cdplayer.ui.components.MiniPlayer
 
 data class BottomNavItem(
@@ -65,6 +69,12 @@ val bottomNavItems = listOf(
         title = "라이브러리",
         selectedIcon = Icons.Filled.LibraryMusic,
         unselectedIcon = Icons.Outlined.LibraryMusic
+    ),
+    BottomNavItem(
+        route = Screen.Books.route,
+        title = "이북",
+        selectedIcon = Icons.Filled.MenuBook,
+        unselectedIcon = Icons.Outlined.MenuBook
     ),
     BottomNavItem(
         route = Screen.Search.route,
@@ -91,6 +101,7 @@ fun CDPlayerNavHost(
     val showBottomBar = currentDestination?.route in listOf(
         Screen.Home.route,
         Screen.Library.route,
+        Screen.Books.route,
         Screen.Search.route,
         Screen.Settings.route
     )
@@ -225,6 +236,27 @@ fun CDPlayerNavHost(
                         onNavigateToEditMetadata = { audioId ->
                             navController.navigate(Screen.EditMetadata.createRoute(audioId))
                         }
+                    )
+                }
+
+                composable(Screen.Books.route) {
+                    BooksScreen(
+                        onNavigateToPdfViewer = { filePath ->
+                            navController.navigate(Screen.PdfViewer.createRoute(filePath))
+                        }
+                    )
+                }
+
+                composable(
+                    route = Screen.PdfViewer.route,
+                    arguments = listOf(navArgument("filePath") { type = NavType.StringType })
+                ) { backStackEntry ->
+                    val filePath = android.net.Uri.decode(
+                        backStackEntry.arguments?.getString("filePath") ?: return@composable
+                    )
+                    PdfViewerScreen(
+                        filePath = filePath,
+                        onNavigateBack = { navController.popBackStack() }
                     )
                 }
 

@@ -5,6 +5,7 @@ import androidx.room.Room
 import com.example.cdplayer.data.local.AppDatabase
 import com.example.cdplayer.data.local.dao.AudioFileDao
 import com.example.cdplayer.data.local.dao.BookmarkDao
+import com.example.cdplayer.data.local.dao.PdfBookDao
 import com.example.cdplayer.data.local.dao.PlaylistDao
 import com.example.cdplayer.data.remote.api.CoverArtArchiveApi
 import com.example.cdplayer.data.remote.api.DictionaryApi
@@ -58,6 +59,12 @@ object AppModule {
     @Singleton
     fun provideBookmarkDao(database: AppDatabase): BookmarkDao {
         return database.bookmarkDao()
+    }
+
+    @Provides
+    @Singleton
+    fun providePdfBookDao(database: AppDatabase): PdfBookDao {
+        return database.pdfBookDao()
     }
 
     // Network

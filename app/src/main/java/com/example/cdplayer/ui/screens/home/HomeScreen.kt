@@ -61,6 +61,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -71,7 +72,10 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.media.AudioManager
+import android.media.ToneGenerator
 import com.example.cdplayer.domain.model.AudioFile
 import com.example.cdplayer.ui.components.AudioItem
 import com.example.cdplayer.ui.components.BulkActionToolbar
@@ -569,18 +573,33 @@ fun GreetingCard(
         Color(0xFFFF9800), // Orange
         Color(0xFFE91E63)  // Pink
     )
-    
+
     var colorIndex by remember { mutableIntStateOf(0) }
     var rotationTarget by remember { mutableStateOf(0f) }
-    
+
     val rotation by animateFloatAsState(
         targetValue = rotationTarget,
         animationSpec = tween(durationMillis = 500),
         label = "card_rotation"
     )
-    
+
     val currentColor = colors[colorIndex % colors.size]
-    
+
+    // 카드 뒤집기 효과음
+    val toneGenerator = remember {
+        try {
+            ToneGenerator(AudioManager.STREAM_MUSIC, 50)
+        } catch (e: Exception) {
+            null
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            toneGenerator?.release()
+        }
+    }
+
     Card(
         modifier = modifier
             .width(140.dp)
@@ -588,6 +607,8 @@ fun GreetingCard(
                 rotationY = rotation
             }
             .clickable {
+                // 효과음 재생 (짧은 두 톤으로 뒤집기 느낌)
+                toneGenerator?.startTone(ToneGenerator.TONE_PROP_BEEP, 50)
                 rotationTarget += 360f
                 colorIndex = (colorIndex + 1) % colors.size
             },

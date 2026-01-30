@@ -7,22 +7,44 @@ import org.json.JSONArray
 import javax.inject.Inject
 import javax.inject.Singleton
 
+data class TranslationResult(
+    val original: String,
+    val translated: String,
+    val isKoreanToEnglish: Boolean  // true: 한글→영어, false: 영어→한글
+)
+
 @Singleton
 class DictionaryRepository @Inject constructor(
     private val googleTranslateApi: GoogleTranslateApi
 ) {
-    suspend fun translate(text: String): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+    suspend fun translate(text: String): Result<TranslationResult> = withContext(Dispatchers.IO) {
         try {
-            val translated = translateWithGoogle(text.trim())
-            Result.success(Pair(text.trim(), translated))
+            val trimmedText = text.trim()
+            val isKorean = containsKorean(trimmedText)
+            val translated = translateWithGoogle(trimmedText, isKorean)
+            Result.success(TranslationResult(
+                original = trimmedText,
+                translated = translated,
+                isKoreanToEnglish = isKorean
+            ))
         } catch (e: Exception) {
             Result.failure(Exception("번역 중 오류가 발생했습니다"))
         }
     }
 
-    private suspend fun translateWithGoogle(text: String): String {
+    private fun containsKorean(text: String): Boolean {
+        return text.any { it in '\uAC00'..'\uD7A3' || it in '\u3131'..'\u3163' }
+    }
+
+    private suspend fun translateWithGoogle(text: String, isKoreanToEnglish: Boolean): String {
         return try {
-            val response = googleTranslateApi.translate(text = text)
+            val sourceLang = if (isKoreanToEnglish) "ko" else "en"
+            val targetLang = if (isKoreanToEnglish) "en" else "ko"
+            val response = googleTranslateApi.translate(
+                sourceLang = sourceLang,
+                targetLang = targetLang,
+                text = text
+            )
             val jsonString = response.string()
             parseGoogleTranslateResponse(jsonString)
         } catch (e: Exception) {

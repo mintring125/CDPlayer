@@ -1,9 +1,12 @@
 package com.example.cdplayer.ui.components
 
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.material.icons.Icons
@@ -33,8 +36,12 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
+import com.example.cdplayer.domain.model.Bookmark
+import com.example.cdplayer.domain.model.Chapter
 import com.example.cdplayer.player.RepeatMode
+import kotlin.math.abs
 
 @Composable
 fun PlaybackControls(
@@ -51,10 +58,15 @@ fun PlaybackControls(
     onShuffleChange: () -> Unit,
     onSkipBackward: () -> Unit,
     onSkipForward: () -> Unit,
+    bookmarks: List<Bookmark> = emptyList(),
+    chapters: List<Chapter> = emptyList(),
     modifier: Modifier = Modifier
 ) {
     var sliderPosition by remember(currentPosition) { mutableFloatStateOf(currentPosition.toFloat()) }
     var isDragging by remember { mutableFloatStateOf(0f) }
+
+    val maxDuration = duration.toFloat().coerceAtLeast(1f)
+    val snapThreshold = maxDuration * 0.015f
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -66,21 +78,86 @@ fun PlaybackControls(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
         ) {
-            Slider(
-                value = if (isDragging > 0) isDragging else sliderPosition,
-                onValueChange = { isDragging = it },
-                onValueChangeFinished = {
-                    onSeek(isDragging.toLong())
-                    isDragging = 0f
-                },
-                valueRange = 0f..duration.toFloat().coerceAtLeast(1f),
-                colors = SliderDefaults.colors(
-                    thumbColor = MaterialTheme.colorScheme.primary,
-                    activeTrackColor = MaterialTheme.colorScheme.primary,
-                    inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
-                ),
-                modifier = Modifier.fillMaxWidth()
-            )
+            val bookmarkColor = MaterialTheme.colorScheme.tertiary
+            val chapterColor = MaterialTheme.colorScheme.secondary
+
+            Box(modifier = Modifier.fillMaxWidth()) {
+                Slider(
+                    value = if (isDragging > 0) isDragging else sliderPosition,
+                    onValueChange = { value ->
+                        // Collect all snap points: bookmarks + chapter start times
+                        val snapPoints = mutableListOf<Float>()
+                        bookmarks.forEach { snapPoints.add(it.position.toFloat()) }
+                        chapters.forEach { snapPoints.add(it.startTimeMs.toFloat()) }
+
+                        val snapped = if (snapPoints.isNotEmpty()) {
+                            val nearest = snapPoints.minByOrNull { abs(it - value) }
+                            if (nearest != null && abs(nearest - value) <= snapThreshold) {
+                                nearest
+                            } else {
+                                value
+                            }
+                        } else {
+                            value
+                        }
+                        isDragging = snapped
+                    },
+                    onValueChangeFinished = {
+                        onSeek(isDragging.toLong())
+                        isDragging = 0f
+                    },
+                    valueRange = 0f..maxDuration,
+                    colors = SliderDefaults.colors(
+                        thumbColor = MaterialTheme.colorScheme.primary,
+                        activeTrackColor = MaterialTheme.colorScheme.primary,
+                        inactiveTrackColor = MaterialTheme.colorScheme.surfaceVariant
+                    ),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                // Bookmark & chapter markers overlay
+                if ((bookmarks.isNotEmpty() || chapters.isNotEmpty()) && duration > 0) {
+                    Canvas(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(48.dp) // Match Slider touch target height
+                            .padding(horizontal = 10.dp) // Match Slider track padding (thumb radius)
+                    ) {
+                        val trackWidth = size.width
+                        val centerY = size.height / 2f
+
+                        // Chapter markers: vertical lines
+                        val chapterLineHeight = 10.dp.toPx()
+                        val chapterLineWidth = 2.dp.toPx()
+                        chapters.forEach { chapter ->
+                            val fraction = chapter.startTimeMs.toFloat() / maxDuration
+                            if (fraction in 0f..1f) {
+                                val x = fraction * trackWidth
+                                drawLine(
+                                    color = chapterColor,
+                                    start = Offset(x, centerY - chapterLineHeight / 2),
+                                    end = Offset(x, centerY + chapterLineHeight / 2),
+                                    strokeWidth = chapterLineWidth
+                                )
+                            }
+                        }
+
+                        // Bookmark markers: circles (drawn on top)
+                        val markerRadius = 4.dp.toPx()
+                        bookmarks.forEach { bookmark ->
+                            val fraction = bookmark.position.toFloat() / maxDuration
+                            if (fraction in 0f..1f) {
+                                val x = fraction * trackWidth
+                                drawCircle(
+                                    color = bookmarkColor,
+                                    radius = markerRadius,
+                                    center = Offset(x, centerY)
+                                )
+                            }
+                        }
+                    }
+                }
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),

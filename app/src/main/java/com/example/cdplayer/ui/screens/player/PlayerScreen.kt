@@ -60,7 +60,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
+import android.speech.tts.TextToSpeech
+import java.util.Locale
 import com.example.cdplayer.ui.components.AudioItemCompact
 import com.example.cdplayer.ui.components.LargeCoverArt
 import com.example.cdplayer.ui.components.PlaybackControls
@@ -316,7 +320,9 @@ fun PlayerScreen(
                             onRepeatModeChange = { viewModel.toggleRepeatMode() },
                             onShuffleChange = { viewModel.toggleShuffle() },
                             onSkipBackward = { viewModel.skipBackward() },
-                            onSkipForward = { viewModel.skipForward() }
+                            onSkipForward = { viewModel.skipForward() },
+                            bookmarks = bookmarks,
+                            chapters = playbackState.chapters
                         )
                     }
                 }
@@ -413,7 +419,9 @@ fun PlayerScreen(
                         onRepeatModeChange = { viewModel.toggleRepeatMode() },
                         onShuffleChange = { viewModel.toggleShuffle() },
                         onSkipBackward = { viewModel.skipBackward() },
-                        onSkipForward = { viewModel.skipForward() }
+                        onSkipForward = { viewModel.skipForward() },
+                        bookmarks = bookmarks,
+                        chapters = playbackState.chapters
                     )
 
                     Spacer(modifier = Modifier.height(32.dp))
@@ -471,6 +479,7 @@ fun PlayerScreen(
                 TranslationResultDialog(
                     original = result.original,
                     translated = result.translated,
+                    isKoreanToEnglish = result.isKoreanToEnglish,
                     onDismiss = { viewModel.clearDictionaryResult() }
                 )
             }
@@ -802,8 +811,39 @@ fun QueueSheet(
 fun TranslationResultDialog(
     original: String,
     translated: String,
+    isKoreanToEnglish: Boolean = false,
     onDismiss: () -> Unit
 ) {
+    val context = LocalContext.current
+
+    // TTS 초기화
+    var ttsReady by remember { mutableStateOf(false) }
+    val tts = remember {
+        TextToSpeech(context) { status ->
+            if (status == TextToSpeech.SUCCESS) {
+                ttsReady = true
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            tts.stop()
+            tts.shutdown()
+        }
+    }
+
+    // 영어 텍스트 결정 (한글→영어면 translated가 영어, 영어→한글이면 original이 영어)
+    val englishText = if (isKoreanToEnglish) translated else original
+    val koreanText = if (isKoreanToEnglish) original else translated
+
+    fun speakEnglish(text: String) {
+        if (ttsReady) {
+            tts.language = Locale.US
+            tts.speak(text, TextToSpeech.QUEUE_FLUSH, null, null)
+        }
+    }
+
     AlertDialog(
         onDismissRequest = onDismiss,
         title = { Text("번역 결과") },
@@ -811,34 +851,80 @@ fun TranslationResultDialog(
             Column(
                 modifier = Modifier.fillMaxWidth()
             ) {
-                // 원문
-                Text(
-                    text = "원문",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = original,
-                    style = MaterialTheme.typography.bodyMedium
-                )
+                if (isKoreanToEnglish) {
+                    // 한글 → 영어
+                    // 원문 (한글)
+                    Text(
+                        text = "한글",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = koreanText,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
 
-                Spacer(modifier = Modifier.height(16.dp))
-                Divider()
-                Spacer(modifier = Modifier.height(16.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(16.dp))
 
-                // 번역
-                Text(
-                    text = "번역",
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.primary
-                )
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = translated,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
-                )
+                    // 번역 (영어) - 클릭하면 TTS
+                    Text(
+                        text = "영어 (터치하면 발음)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = englishText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { speakEnglish(englishText) }
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                            .padding(8.dp)
+                    )
+                } else {
+                    // 영어 → 한글
+                    // 원문 (영어) - 클릭하면 TTS
+                    Text(
+                        text = "영어 (터치하면 발음)",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = englishText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(8.dp))
+                            .clickable { speakEnglish(englishText) }
+                            .background(MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f))
+                            .padding(8.dp)
+                    )
+
+                    Spacer(modifier = Modifier.height(16.dp))
+                    Divider()
+                    Spacer(modifier = Modifier.height(16.dp))
+
+                    // 번역 (한글)
+                    Text(
+                        text = "한글",
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        text = koreanText,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
             }
         },
         confirmButton = {

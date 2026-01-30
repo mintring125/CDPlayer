@@ -31,7 +31,11 @@ data class PlayerUiState(
 )
 
 sealed class DictionaryResult {
-    data class Translation(val original: String, val translated: String) : DictionaryResult()
+    data class Translation(
+        val original: String,
+        val translated: String,
+        val isKoreanToEnglish: Boolean  // true: 한글→영어, false: 영어→한글
+    ) : DictionaryResult()
     data class Error(val message: String) : DictionaryResult()
 }
 
@@ -183,12 +187,12 @@ class PlayerViewModel @Inject constructor(
                 dictionaryResult = null
             )
 
-            // 단어든 문장이든 모두 Google 번역
+            // 한글이면 한→영, 영어면 영→한 자동 감지
             val result = dictionaryRepository.translate(text)
             _uiState.value = _uiState.value.copy(
                 isDictionaryLoading = false,
                 dictionaryResult = result.fold(
-                    onSuccess = { DictionaryResult.Translation(it.first, it.second) },
+                    onSuccess = { DictionaryResult.Translation(it.original, it.translated, it.isKoreanToEnglish) },
                     onFailure = { DictionaryResult.Error(it.message ?: "알 수 없는 오류") }
                 )
             )

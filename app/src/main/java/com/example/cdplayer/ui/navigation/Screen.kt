@@ -23,4 +23,8 @@ sealed class Screen(val route: String) {
     object EditMetadata : Screen("edit/{audioId}") {
         fun createRoute(audioId: Long) = "edit/$audioId"
     }
+    object Books : Screen("books")
+    object PdfViewer : Screen("pdf_viewer/{filePath}") {
+        fun createRoute(filePath: String) = "pdf_viewer/${android.net.Uri.encode(filePath)}"
+    }
 }
