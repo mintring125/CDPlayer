@@ -103,9 +103,16 @@ class HomeViewModel @Inject constructor(
     private val _selectionState = MutableStateFlow(SelectionState())
     val selectionState: StateFlow<SelectionState> = _selectionState.asStateFlow()
 
+    companion object {
+        private var hasScannedOnLaunch = false
+    }
+
     init {
-        // 앱 시작 시 미디어 스캔
-        scanMedia()
+        // 앱 시작 시 1회만 미디어 스캔
+        if (!hasScannedOnLaunch) {
+            hasScannedOnLaunch = true
+            scanMedia()
+        }
     }
 
     fun scanMedia() {

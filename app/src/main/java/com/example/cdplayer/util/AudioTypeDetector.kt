@@ -31,6 +31,10 @@ object AudioTypeDetector {
     // 30분 이상이면 오디오북으로 간주
     private const val AUDIOBOOK_DURATION_THRESHOLD = 30 * 60 * 1000L
 
+    private fun isAudiobookExtension(lowerPath: String): Boolean {
+        return lowerPath.endsWith(".mp3") || lowerPath.endsWith(".m4b")
+    }
+
     fun detectAudioType(
         path: String,
         genre: String?,
@@ -38,6 +42,11 @@ object AudioTypeDetector {
         duration: Long
     ): AudioType {
         val lowerPath = path.lowercase()
+
+        // 오디오북은 mp3, m4b 확장자만 허용
+        if (!isAudiobookExtension(lowerPath)) {
+            return AudioType.MUSIC
+        }
 
         // 0. M4B 확장자는 항상 오디오북
         if (lowerPath.endsWith(".m4b")) {

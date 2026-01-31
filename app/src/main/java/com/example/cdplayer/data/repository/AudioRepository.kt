@@ -48,6 +48,12 @@ class AudioRepository @Inject constructor(
     suspend fun getAudioFileByPath(path: String): AudioFile? =
         audioFileDao.getAudioFileByPath(path)?.toDomain()
 
+    suspend fun getAllPaths(): List<String> =
+        audioFileDao.getAllPaths()
+
+    suspend fun getFilesWithoutCoverArt(): List<AudioFile> =
+        audioFileDao.getFilesWithoutCoverArt().map { it.toDomain() }
+
     fun getRecentlyPlayed(limit: Int = 20): Flow<List<AudioFile>> =
         audioFileDao.getRecentlyPlayed(limit).map { entities ->
             entities.map { it.toDomain() }

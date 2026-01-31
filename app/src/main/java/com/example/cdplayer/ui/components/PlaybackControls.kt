@@ -195,26 +195,33 @@ fun PlaybackControls(
             }
 
             // Previous
-            IconButton(onClick = onPrevious) {
+            IconButton(
+                onClick = onPrevious,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.SkipPrevious,
                     contentDescription = "이전",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(40.dp)
                 )
             }
 
             // Skip backward
-            IconButton(onClick = onSkipBackward) {
+            IconButton(
+                onClick = onSkipBackward,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Replay10,
-                    contentDescription = "10초 뒤로"
+                    contentDescription = "10초 뒤로",
+                    modifier = Modifier.size(28.dp)
                 )
             }
 
             // Play/Pause
             FilledIconButton(
                 onClick = onPlayPause,
-                modifier = Modifier.size(64.dp),
+                modifier = Modifier.size(80.dp),
                 colors = IconButtonDefaults.filledIconButtonColors(
                     containerColor = MaterialTheme.colorScheme.primary
                 )
@@ -222,24 +229,31 @@ fun PlaybackControls(
                 Icon(
                     imageVector = if (isPlaying) Icons.Default.Pause else Icons.Default.PlayArrow,
                     contentDescription = if (isPlaying) "일시정지" else "재생",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(44.dp)
                 )
             }
 
             // Skip forward
-            IconButton(onClick = onSkipForward) {
+            IconButton(
+                onClick = onSkipForward,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.Forward10,
-                    contentDescription = "10초 앞으로"
+                    contentDescription = "10초 앞으로",
+                    modifier = Modifier.size(28.dp)
                 )
             }
 
             // Next
-            IconButton(onClick = onNext) {
+            IconButton(
+                onClick = onNext,
+                modifier = Modifier.size(48.dp)
+            ) {
                 Icon(
                     imageVector = Icons.Default.SkipNext,
                     contentDescription = "다음",
-                    modifier = Modifier.size(32.dp)
+                    modifier = Modifier.size(40.dp)
                 )
             }
 

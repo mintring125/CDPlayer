@@ -27,7 +27,8 @@ data class AudioMetadata(
     val duration: Long?,
     val bitrate: Int?,
     val sampleRate: Int?,
-    val hasEmbeddedArt: Boolean
+    val hasEmbeddedArt: Boolean,
+    val embeddedArtData: ByteArray? = null
 )
 
 @Singleton
@@ -65,6 +66,8 @@ class Id3TagReader @Inject constructor(
             val tag = audioFile.tag
             val audioHeader = audioFile.audioHeader
 
+            val artwork = tag?.firstArtwork
+
             AudioMetadata(
                 title = fixKoreanEncoding(tag?.getFirst(FieldKey.TITLE)?.takeIf { it.isNotBlank() }),
                 artist = fixKoreanEncoding(tag?.getFirst(FieldKey.ARTIST)?.takeIf { it.isNotBlank() }),
@@ -77,7 +80,8 @@ class Id3TagReader @Inject constructor(
                 duration = (audioHeader.trackLength * 1000).toLong(),
                 bitrate = audioHeader.bitRateAsNumber.toInt(),
                 sampleRate = audioHeader.sampleRateAsNumber,
-                hasEmbeddedArt = tag?.firstArtwork != null
+                hasEmbeddedArt = artwork != null,
+                embeddedArtData = artwork?.binaryData
             )
         } catch (e: Exception) {
             e.printStackTrace()
@@ -186,6 +190,32 @@ class Id3TagReader @Inject constructor(
                 outputFile.absolutePath
             } else {
                 // 비트맵 변환 실패 시 원본 데이터 그대로 저장
+                outputFile.writeBytes(artData)
+                outputFile.absolutePath
+            }
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
+
+    fun saveEmbeddedArtFromData(artData: ByteArray, audioFileId: Long): String? {
+        return try {
+            val coverArtDir = File(context.filesDir, "cover_art")
+            if (!coverArtDir.exists()) {
+                coverArtDir.mkdirs()
+            }
+
+            val outputFile = File(coverArtDir, "cover_$audioFileId.jpg")
+
+            val bitmap = BitmapFactory.decodeByteArray(artData, 0, artData.size)
+            if (bitmap != null) {
+                FileOutputStream(outputFile).use { fos ->
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 90, fos)
+                }
+                bitmap.recycle()
+                outputFile.absolutePath
+            } else {
                 outputFile.writeBytes(artData)
                 outputFile.absolutePath
             }

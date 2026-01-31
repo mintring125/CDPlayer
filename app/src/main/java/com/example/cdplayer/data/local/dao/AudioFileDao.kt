@@ -31,6 +31,12 @@ interface AudioFileDao {
     @Query("SELECT * FROM audio_files WHERE path = :path")
     suspend fun getAudioFileByPath(path: String): AudioFileEntity?
 
+    @Query("SELECT path FROM audio_files")
+    suspend fun getAllPaths(): List<String>
+
+    @Query("SELECT * FROM audio_files WHERE coverArtPath IS NULL")
+    suspend fun getFilesWithoutCoverArt(): List<AudioFileEntity>
+
     @Query("SELECT * FROM audio_files WHERE lastPlayedAt IS NOT NULL ORDER BY lastPlayedAt DESC LIMIT :limit")
     fun getRecentlyPlayed(limit: Int = 20): Flow<List<AudioFileEntity>>
 

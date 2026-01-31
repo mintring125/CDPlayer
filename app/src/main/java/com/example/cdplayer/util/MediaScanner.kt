@@ -36,7 +36,6 @@ class MediaScanner @Inject constructor(
     }
 
     private val projection = arrayOf(
-        MediaStore.Audio.Media._ID,
         MediaStore.Audio.Media.TITLE,
         MediaStore.Audio.Media.ARTIST,
         MediaStore.Audio.Media.ALBUM,
@@ -55,6 +54,9 @@ class MediaScanner @Inject constructor(
         val audioFiles = mutableListOf<AudioFile>()
         val existingPaths = mutableListOf<String>()
 
+        // 1. DB에서 기존 경로를 HashSet으로 한번에 로드 (N+1 쿼리 제거)
+        val dbPaths = audioRepository.getAllPaths().toHashSet()
+
         context.contentResolver.query(
             audioCollection,
             projection,
@@ -62,7 +64,6 @@ class MediaScanner @Inject constructor(
             null,
             "${MediaStore.Audio.Media.DATE_ADDED} DESC"
         )?.use { cursor ->
-            val idColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media._ID)
             val titleColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.TITLE)
             val artistColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ARTIST)
             val albumColumn = cursor.getColumnIndexOrThrow(MediaStore.Audio.Media.ALBUM)
@@ -79,23 +80,38 @@ class MediaScanner @Inject constructor(
 
             while (cursor.moveToNext()) {
                 current++
-                val id = cursor.getLong(idColumn)
                 val path = cursor.getString(dataColumn)
+
+                // m4a 확장자 및 통화녹음 제외
+                val lowerPath = path.lowercase()
+                if (lowerPath.endsWith(".m4a") || isCallRecording(lowerPath)) {
+                    continue
+                }
+
                 existingPaths.add(path)
 
                 emit(ScanProgress(current, total, path))
 
-                // 이미 DB에 있는지 확인
-                val existingAudio = audioRepository.getAudioFileByPath(path)
-                if (existingAudio != null) {
-                    // 기존 데이터가 깨진 인코딩인지 확인하고, 그렇다면 업데이트
-                    if (!needsEncodingFix(existingAudio.title) && 
-                        !needsEncodingFix(existingAudio.artist) && 
-                        !needsEncodingFix(existingAudio.album)) {
+                // 2. HashSet으로 O(1) 존재 확인 (개별 DB 쿼리 제거)
+                if (dbPaths.contains(path)) {
+                    // 인코딩 수정이 필요한지는 MediaStore 데이터로 간접 확인
+                    val msTitle = cursor.getString(titleColumn)
+                    val msArtist = cursor.getString(artistColumn)
+                    val msAlbum = cursor.getString(albumColumn)
+                    if (needsEncodingFix(msTitle) || needsEncodingFix(msArtist) || needsEncodingFix(msAlbum)) {
+                        // 인코딩 수정이 필요한 경우만 개별 조회 후 삭제/재등록
+                        val existingAudio = audioRepository.getAudioFileByPath(path)
+                        if (existingAudio != null) {
+                            if (!needsEncodingFix(existingAudio.title) &&
+                                !needsEncodingFix(existingAudio.artist) &&
+                                !needsEncodingFix(existingAudio.album)) {
+                                continue
+                            }
+                            audioRepository.deleteAudioFileById(existingAudio.id)
+                        }
+                    } else {
                         continue
                     }
-                    // 인코딩 수정이 필요한 경우 삭제 후 재등록
-                    audioRepository.deleteAudioFileById(existingAudio.id)
                 }
 
                 val mediaStoreTitle = fixKoreanEncodingStatic(cursor.getString(titleColumn)) ?: ""
@@ -108,7 +124,7 @@ class MediaScanner @Inject constructor(
                 val dateAdded = cursor.getLong(dateAddedColumn) * 1000
                 val trackNumber = cursor.getInt(trackColumn)
 
-                // ID3 태그 읽기 시도
+                // ID3 태그 읽기 시도 (커버아트 데이터도 함께 읽음)
                 val metadata = id3TagReader.readMetadata(path)
 
                 // 파일명 파싱 (ID3 태그가 없을 경우 fallback)
@@ -147,14 +163,7 @@ class MediaScanner @Inject constructor(
                     albumId
                 ).toString()
 
-                // 내장 앨범 아트가 있으면 추출, 없으면 외부 파일 검색
-                var coverArtPath: String? = null
-                if (metadata?.hasEmbeddedArt == true) {
-                    coverArtPath = id3TagReader.saveEmbeddedArtToFile(path, id)
-                } else {
-                    coverArtPath = id3TagReader.findExternalCoverArt(path)
-                }
-
+                // 커버아트는 null로 저장 (후처리에서 일괄 처리)
                 val audioFile = AudioFile(
                     id = 0, // Room에서 자동 생성
                     title = title,
@@ -164,7 +173,7 @@ class MediaScanner @Inject constructor(
                     duration = duration,
                     path = path,
                     type = audioType,
-                    coverArtPath = coverArtPath,
+                    coverArtPath = null,
                     coverArtUri = albumArtUri,
                     lastPlayedPosition = 0,
                     lastPlayedAt = null,
@@ -198,7 +207,45 @@ class MediaScanner @Inject constructor(
         // 더 이상 존재하지 않는 파일 삭제
         audioRepository.deleteNotInPaths(existingPaths)
 
+        // 커버아트 후처리 (메인 스캔 완료 후)
+        processCoverArt()
+
     }.flowOn(Dispatchers.IO)
+
+    /**
+     * coverArtPath가 null인 파일들에 대해 커버아트를 일괄 처리.
+     * 디렉토리별 캐시를 사용하여 같은 폴더 내 파일들의 중복 탐색을 방지.
+     */
+    private suspend fun processCoverArt() {
+        val filesWithoutCover = audioRepository.getFilesWithoutCoverArt()
+        if (filesWithoutCover.isEmpty()) return
+
+        // 디렉토리 → 외부 커버아트 경로 캐시
+        val dirCoverCache = mutableMapOf<String, String?>()
+
+        for (audioFile in filesWithoutCover) {
+            val path = audioFile.path
+            val dir = path.substringBeforeLast("/")
+
+            // 1. 임베디드 아트 확인 (ID3 태그 재읽기)
+            val metadata = id3TagReader.readMetadata(path)
+            if (metadata?.embeddedArtData != null) {
+                val coverPath = id3TagReader.saveEmbeddedArtFromData(metadata.embeddedArtData, audioFile.id)
+                if (coverPath != null) {
+                    audioRepository.updateCoverArt(audioFile.id, coverPath)
+                    continue
+                }
+            }
+
+            // 2. 외부 파일 검색 (디렉토리 캐시 활용)
+            val externalCover = dirCoverCache.getOrPut(dir) {
+                id3TagReader.findExternalCoverArt(path)
+            }
+            if (externalCover != null) {
+                audioRepository.updateCoverArt(audioFile.id, externalCover)
+            }
+        }
+    }
 
     suspend fun scanSingleFile(path: String): AudioFile? = withContext(Dispatchers.IO) {
         val metadata = id3TagReader.readMetadata(path)
@@ -308,6 +355,15 @@ class MediaScanner @Inject constructor(
             }
 
             return text
+        }
+
+        private val callRecordingPatterns = listOf(
+            "call", "recorder", "recording", "통화녹음", "통화 녹음",
+            "callrecorder", "callrecording", "voicerecorder"
+        )
+
+        fun isCallRecording(lowerPath: String): Boolean {
+            return callRecordingPatterns.any { lowerPath.contains(it) }
         }
 
         private fun containsKorean(text: String): Boolean {

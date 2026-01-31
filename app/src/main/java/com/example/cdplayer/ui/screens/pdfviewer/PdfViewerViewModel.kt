@@ -6,6 +6,7 @@ import android.speech.tts.UtteranceProgressListener
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.cdplayer.BuildConfig
 import com.example.cdplayer.data.local.dao.PdfBookDao
 import com.example.cdplayer.data.local.entity.PdfBookEntity
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -34,8 +35,10 @@ class PdfViewerViewModel @Inject constructor(
 
     companion object {
         private const val TAG = "PdfViewerVM"
-        const val GEMINI_API_KEY = "AIzaSyB5ZGyzyLxCAXcH8J1nAJcjSqN5Sfm2_2w"
     }
+
+    // API Key loaded from BuildConfig (sourced from local.properties, not committed to git)
+    private val geminiApiKey: String = BuildConfig.GEMINI_API_KEY
 
     init {
         tts = TextToSpeech(context, this)
@@ -77,16 +80,23 @@ class PdfViewerViewModel @Inject constructor(
     fun savePage(filePath: String, page: Int, totalPages: Int) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {
-                val fileName = File(filePath).nameWithoutExtension
-                pdfBookDao.upsert(
-                    PdfBookEntity(
-                        filePath = filePath,
-                        fileName = fileName,
-                        lastPage = page,
-                        totalPages = totalPages,
-                        lastReadAt = System.currentTimeMillis()
+                val existingBook = pdfBookDao.getBook(filePath)
+                if (existingBook != null) {
+                    // Update only page info, preserve isFavorite and coverPath
+                    pdfBookDao.updateLastPage(filePath, page)
+                } else {
+                    // New book entry
+                    val fileName = File(filePath).nameWithoutExtension
+                    pdfBookDao.upsert(
+                        PdfBookEntity(
+                            filePath = filePath,
+                            fileName = fileName,
+                            lastPage = page,
+                            totalPages = totalPages,
+                            lastReadAt = System.currentTimeMillis()
+                        )
                     )
-                )
+                }
             }
         }
     }
@@ -97,7 +107,7 @@ class PdfViewerViewModel @Inject constructor(
         }
     }
 
-    fun getApiKey(): String = GEMINI_API_KEY
+    fun getApiKey(): String = geminiApiKey
 
     fun readFileAsBase64(filePath: String): String? {
         return try {

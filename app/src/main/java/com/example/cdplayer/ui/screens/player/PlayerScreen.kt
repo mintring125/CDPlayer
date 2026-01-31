@@ -109,7 +109,7 @@ fun PlayerScreen(
                         singleLine = true,
                         modifier = Modifier
                             .fillMaxWidth()
-                            .height(48.dp),
+                            .height(52.dp),
                         textStyle = MaterialTheme.typography.bodyMedium,
                         shape = RoundedCornerShape(24.dp),
                         colors = OutlinedTextFieldDefaults.colors(
@@ -334,18 +334,18 @@ fun PlayerScreen(
                         .padding(horizontal = 24.dp),
                     horizontalAlignment = Alignment.CenterHorizontally
                 ) {
-                    Spacer(modifier = Modifier.height(24.dp))
+                    Spacer(modifier = Modifier.weight(1f))
 
                     // Cover Art
                     LargeCoverArt(
                         coverArtPath = currentTrack?.coverArtPath,
                         coverArtUri = currentTrack?.coverArtUri,
                         modifier = Modifier
-                            .fillMaxWidth(0.85f)
+                            .fillMaxWidth(0.65f)
                             .aspectRatio(1f)
                     )
 
-                    Spacer(modifier = Modifier.height(32.dp))
+                    Spacer(modifier = Modifier.height(16.dp))
 
                     // Track Info
                     Column(
