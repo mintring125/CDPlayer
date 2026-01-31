@@ -313,6 +313,11 @@ body {
 
 #explainOverlay.active { display: flex; }
 
+/* Left side mode for right-page explain in dual view */
+#explainOverlay.left-side {
+  justify-content: flex-start;
+}
+
 #explainPanel {
   width: min(520px, 90vw);
   height: 100%;
@@ -323,8 +328,20 @@ body {
   animation: slideIn 0.25s ease-out;
 }
 
+#explainOverlay.left-side #explainPanel {
+  order: -1;
+  border-left: none;
+  border-right: 1px solid rgba(255,255,255,0.1);
+  animation: slideInLeft 0.25s ease-out;
+}
+
 @keyframes slideIn {
   from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+@keyframes slideInLeft {
+  from { transform: translateX(-100%); }
   to { transform: translateX(0); }
 }
 
@@ -941,6 +958,65 @@ function showModeToast() {
 
 viewModeBtn.addEventListener('click', cycleViewMode);
 
+// ==================== Android Bridge ====================
+
+const isAndroid = typeof PdfBridge !== 'undefined';
+
+// Called from Android after page loads
+window.loadPdfFromBase64 = async function(fileName, savedPage) {
+  try {
+    const base64Data = PdfBridge.getFileBase64();
+    if (!base64Data) { console.error('No base64 data'); return; }
+
+    loading.classList.add('active');
+    dropZone.classList.add('hidden');
+    fileNameEl.textContent = fileName;
+
+    const binaryStr = atob(base64Data);
+    const bytes = new Uint8Array(binaryStr.length);
+    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+
+    const loadingTask = pdfjsLib.getDocument({
+      data: bytes.buffer,
+      disableAutoFetch: true,
+      disableStream: false,
+    });
+
+    pdfDoc = await loadingTask.promise;
+    totalPages = pdfDoc.numPages;
+    userScale = 1.0;
+    currentFileName = fileName;
+
+    currentPage = savedPage ? Math.min(savedPage, totalPages) || 1 : 1;
+
+    pageSlider.max = totalPages;
+    pageSlider.value = currentPage;
+
+    clearCache();
+    snapToSpreadStart();
+    updateViewModeBtn();
+
+    viewer.classList.add('active');
+    loading.classList.remove('active');
+
+    await renderCurrentPage();
+    showUI();
+  } catch (err) {
+    console.error('PDF load from bridge error:', err);
+    loading.classList.remove('active');
+    dropZone.classList.remove('hidden');
+  }
+};
+
+// Auto-load from bridge on startup
+if (isAndroid) {
+  setTimeout(() => {
+    const fn = PdfBridge.getFileName();
+    const sp = PdfBridge.loadPage();
+    if (fn) loadPdfFromBase64(fn, sp);
+  }, 300);
+}
+
 // ==================== File Loading ====================
 
 fileBtn.addEventListener('click', () => fileInput.click());
@@ -1096,9 +1172,10 @@ async function renderCurrentPage() {
       btn.innerHTML = explainIcon;
       btn.title = `${entries[i].pageNum}p 해설`;
       const pNum = entries[i].pageNum;
+      const isRightPage = entries.length === 2 && i === 1;
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
-        explainPageAction(pNum);
+        explainPageAction(pNum, isRightPage);
       });
       wrapper.appendChild(btn);
 
@@ -1132,9 +1209,12 @@ function updatePageUI(displayPages) {
     pageInfo.textContent = `${displayPages[0]} / ${totalPages}`;
   }
 
-  // Save current page to localStorage
+  // Save current page
   if (currentFileName) {
     localStorage.setItem('pdfviewer_page_' + currentFileName, currentPage);
+    if (isAndroid) {
+      try { PdfBridge.savePage(currentPage, totalPages); } catch(e) {}
+    }
   }
 }
 
@@ -1476,8 +1556,8 @@ container.addEventListener('wheel', (e) => {
 
 // ==================== Explain (Gemini API) ====================
 
-const GEMINI_API_KEY = 'AIzaSyDaycOizSzEMCnLbHHX9_B0O3SfsNFZDak';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_API_KEY}`;
+const GEMINI_API_KEY = isAndroid ? (function(){ try { return PdfBridge.getApiKey(); } catch(e) { return ''; } })() : 'AIzaSyB5ZGyzyLxCAXcH8J1nAJcjSqN5Sfm2_2w';
+const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
 
 const explainOverlay = document.getElementById('explainOverlay');
 const explainBody = document.getElementById('explainBody');
@@ -1492,12 +1572,14 @@ explainClose.addEventListener('click', closeExplain);
 explainOverlayBg.addEventListener('click', closeExplain);
 
 function closeExplain() {
-  window.speechSynthesis.cancel();
+  try { window.speechSynthesis.cancel(); } catch(e) {}
+  if (isAndroid) { try { PdfBridge.stopSpeaking(); } catch(e) {} }
   if (speakingEl) {
     speakingEl.classList.remove('speaking');
     speakingEl = null;
   }
   explainOverlay.classList.remove('active');
+  explainOverlay.classList.remove('left-side');
 }
 
 document.addEventListener('keydown', (e) => {
@@ -1514,8 +1596,15 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
-async function explainPageAction(pageNum) {
+async function explainPageAction(pageNum, isRightPage = false) {
   const cacheKey = `${currentFileName}_${pageNum}`;
+
+  // In dual mode, right page explain opens on the left side
+  if (isRightPage) {
+    explainOverlay.classList.add('left-side');
+  } else {
+    explainOverlay.classList.remove('left-side');
+  }
 
   explainTitle.textContent = `페이지 ${pageNum} 해설`;
   explainOverlay.classList.add('active');
@@ -1712,9 +1801,11 @@ function populateVoices() {
   ttsVoiceName.textContent = sel ? sel.textContent.split('(')[0].trim().slice(0, 12) : '기본';
 }
 
-window.speechSynthesis.getVoices();
-window.speechSynthesis.onvoiceschanged = populateVoices;
-populateVoices();
+try {
+  window.speechSynthesis.getVoices();
+  window.speechSynthesis.onvoiceschanged = populateVoices;
+  populateVoices();
+} catch(e) { /* speechSynthesis not available */ }
 
 // Test button
 ttsTestBtn.addEventListener('click', () => {
@@ -1728,14 +1819,32 @@ function getSelectedVoice() {
 }
 
 function speakEnglish(text, el) {
-  window.speechSynthesis.cancel();
+  try { window.speechSynthesis.cancel(); } catch(e) {}
 
   if (speakingEl === el && el !== null) {
     clearSpeaking();
+    if (isAndroid) { try { PdfBridge.stopSpeaking(); } catch(e) {} }
     return;
   }
 
   clearSpeaking();
+
+  if (el) {
+    speakingEl = el;
+    el.classList.add('speaking');
+  }
+
+  // Use Android native TTS if available
+  if (isAndroid) {
+    try {
+      PdfBridge.speak(text, ttsRate);
+      // Auto-clear speaking state after estimated duration
+      const words = text.split(/\s+/).length;
+      const estimatedMs = (words / (2.5 * ttsRate)) * 1000 + 500;
+      setTimeout(() => clearSpeaking(), Math.max(estimatedMs, 1500));
+      return;
+    } catch(e) { /* fallback to Web Speech */ }
+  }
 
   const utterance = new SpeechSynthesisUtterance(text);
   utterance.lang = 'en-US';
@@ -1745,11 +1854,6 @@ function speakEnglish(text, el) {
   if (voice) utterance.voice = voice;
 
   currentUtterance = utterance;
-
-  if (el) {
-    speakingEl = el;
-    el.classList.add('speaking');
-  }
 
   utterance.onend = () => clearSpeaking();
   utterance.onerror = () => clearSpeaking();
