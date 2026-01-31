@@ -10,5 +10,8 @@ data class PdfBookEntity(
     val fileName: String,
     val lastPage: Int = 1,
     val totalPages: Int = 0,
-    val lastReadAt: Long = System.currentTimeMillis()
+    val lastReadAt: Long = System.currentTimeMillis(),
+    val isFavorite: Boolean = false,
+    val coverPath: String? = null
 )
+

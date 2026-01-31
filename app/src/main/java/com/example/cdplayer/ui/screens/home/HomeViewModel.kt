@@ -326,4 +326,31 @@ class HomeViewModel @Inject constructor(
             }
         }
     }
+
+    fun renameAlbum(album: AudiobookAlbum, newName: String) {
+        if (newName.isBlank()) return
+        val trackIds = album.tracks.map { it.id }
+        viewModelScope.launch {
+            try {
+                audioRepository.updateAlbumForIds(trackIds, newName)
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "앨범 이름 변경 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
+
+    fun renameSelectedAudiobooks(newName: String) {
+        val selectedIds = _audiobookSelectionState.value.selectedIds.toList()
+        if (selectedIds.isEmpty() || newName.isBlank()) return
+
+        viewModelScope.launch {
+            try {
+                audioRepository.updateAlbumForIds(selectedIds, newName)
+                clearAudiobookSelection()
+            } catch (e: Exception) {
+                _uiState.update { it.copy(error = "앨범 이름 변경 중 오류 발생: ${e.message}") }
+            }
+        }
+    }
 }
+

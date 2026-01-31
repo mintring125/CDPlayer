@@ -1,1659 +1,1833 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>E-Book PDF Viewer</title>
-<style>
-*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
-
-body {
-  background: #1a1a1a;
-  color: #e0e0e0;
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  overflow: hidden;
-  width: 100vw;
-  height: 100vh;
-  height: 100dvh;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-/* Drop Zone / Welcome Screen */
-#dropZone {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  background: #1a1a1a;
-  transition: background 0.2s;
-}
-
-#dropZone.drag-over { background: #2a2a3a; }
-#dropZone.hidden { display: none; }
-
-.drop-content { text-align: center; pointer-events: none; }
-.drop-icon { font-size: 64px; margin-bottom: 20px; opacity: 0.6; }
-.drop-text { font-size: 22px; margin-bottom: 12px; opacity: 0.8; }
-.drop-sub { font-size: 14px; opacity: 0.5; margin-bottom: 28px; }
-
-#fileBtn {
-  pointer-events: auto;
-  padding: 12px 32px;
-  font-size: 16px;
-  border: 2px solid #5a7;
-  background: transparent;
-  color: #5a7;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-#fileBtn:hover { background: #5a7; color: #fff; }
-#fileInput { display: none; }
-
-/* Viewer Container */
-#viewer {
-  display: none;
-  width: 100%;
-  height: 100%;
-  position: relative;
-}
-
-#viewer.active { display: flex; align-items: center; justify-content: center; }
-
-/* Canvas Container */
-#canvasContainer {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  height: 100%;
-  overflow: hidden;
-  position: relative;
-  gap: 4px;
-}
-
-#canvasContainer canvas {
-  display: block;
-  flex-shrink: 0;
-}
-
-/* Page divider line in dual mode */
-.page-divider {
-  width: 1px;
-  background: rgba(255,255,255,0.08);
-  align-self: stretch;
-  flex-shrink: 0;
-}
-
-/* Top Bar */
-#topBar {
-  position: absolute;
-  top: 0; left: 0; right: 0;
-  height: 48px;
-  background: linear-gradient(to bottom, rgba(0,0,0,0.7), transparent);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 16px;
-  z-index: 20;
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
-#topBar.hidden { opacity: 0; pointer-events: none; }
-#topBar .left, #topBar .right { display: flex; align-items: center; gap: 8px; }
-
-/* Bottom Bar */
-#bottomBar {
-  position: absolute;
-  bottom: 0; left: 0; right: 0;
-  height: 56px;
-  background: linear-gradient(to top, rgba(0,0,0,0.7), transparent);
-  display: flex;
-  align-items: center;
-  padding: 0 16px;
-  gap: 12px;
-  z-index: 20;
-  opacity: 1;
-  transition: opacity 0.3s;
-}
-
-#bottomBar.hidden { opacity: 0; pointer-events: none; }
-
-#pageSlider {
-  flex: 1;
-  height: 6px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: rgba(255,255,255,0.2);
-  border-radius: 3px;
-  outline: none;
-  cursor: pointer;
-}
-
-#pageSlider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: #5a7;
-  cursor: pointer;
-}
-
-#pageSlider::-moz-range-thumb {
-  width: 18px; height: 18px;
-  border-radius: 50%;
-  background: #5a7;
-  border: none;
-  cursor: pointer;
-}
-
-#pageInfo {
-  font-size: 14px;
-  min-width: 100px;
-  text-align: right;
-  white-space: nowrap;
-}
-
-/* Navigation Arrows */
-.nav-arrow {
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 48px;
-  height: 80px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 28px;
-  color: rgba(255,255,255,0.6);
-  cursor: pointer;
-  z-index: 15;
-  border-radius: 8px;
-  transition: all 0.2s;
-  background: rgba(0,0,0,0.2);
-}
-
-.nav-arrow:hover { background: rgba(0,0,0,0.5); color: #fff; }
-#prevBtn { left: 8px; }
-#nextBtn { right: 8px; }
-
-/* Buttons */
-.btn {
-  background: none;
-  border: none;
-  color: #e0e0e0;
-  font-size: 18px;
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  border-radius: 6px;
-  transition: background 0.2s;
-}
-
-.btn:hover { background: rgba(255,255,255,0.15); }
-
-.btn-text {
-  font-size: 13px;
-  width: auto;
-  padding: 0 10px;
-  white-space: nowrap;
-}
-
-.btn.active {
-  background: rgba(85,170,119,0.3);
-  color: #5a7;
-}
-
-/* View mode indicator */
-.view-mode-label {
-  font-size: 11px;
-  opacity: 0.5;
-  margin-right: 2px;
-}
-
-/* Loading */
-#loading {
-  position: absolute;
-  inset: 0;
-  display: none;
-  align-items: center;
-  justify-content: center;
-  background: rgba(0,0,0,0.6);
-  z-index: 50;
-  font-size: 18px;
-}
-
-#loading.active { display: flex; }
-
-.spinner {
-  width: 40px; height: 40px;
-  border: 3px solid rgba(255,255,255,0.2);
-  border-top-color: #5a7;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin-right: 12px;
-}
-
-@keyframes spin { to { transform: rotate(360deg); } }
-
-/* Page number toast */
-#pageToast {
-  position: absolute;
-  top: 50%; left: 50%;
-  transform: translate(-50%, -50%);
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  font-size: 48px;
-  font-weight: 300;
-  padding: 16px 32px;
-  border-radius: 12px;
-  z-index: 30;
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-}
-
-#pageToast.visible { opacity: 1; }
-
-/* Zoom info */
-#zoomInfo {
-  position: absolute;
-  bottom: 70px; left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.7);
-  color: #fff;
-  font-size: 14px;
-  padding: 6px 14px;
-  border-radius: 6px;
-  z-index: 30;
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-}
-
-#zoomInfo.visible { opacity: 1; }
-
-/* Mode toast */
-#modeToast {
-  position: absolute;
-  top: 60px; left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0,0,0,0.75);
-  color: #fff;
-  font-size: 14px;
-  padding: 8px 18px;
-  border-radius: 8px;
-  z-index: 30;
-  opacity: 0;
-  transition: opacity 0.2s;
-  pointer-events: none;
-  white-space: nowrap;
-}
-
-#modeToast.visible { opacity: 1; }
-
-/* Explain Panel */
-#explainOverlay {
-  position: absolute;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 200;
-  display: none;
-  align-items: stretch;
-  justify-content: flex-end;
-}
-
-#explainOverlay.active { display: flex; }
-
-/* Left side mode for right-page explain in dual view */
-#explainOverlay.left-side {
-  justify-content: flex-start;
-}
-
-#explainPanel {
-  width: min(520px, 90vw);
-  height: 100%;
-  background: #222;
-  border-left: 1px solid rgba(255,255,255,0.1);
-  display: flex;
-  flex-direction: column;
-  animation: slideIn 0.25s ease-out;
-}
-
-#explainOverlay.left-side #explainPanel {
-  order: -1;
-  border-left: none;
-  border-right: 1px solid rgba(255,255,255,0.1);
-  animation: slideInLeft 0.25s ease-out;
-}
-
-@keyframes slideIn {
-  from { transform: translateX(100%); }
-  to { transform: translateX(0); }
-}
-
-@keyframes slideInLeft {
-  from { transform: translateX(-100%); }
-  to { transform: translateX(0); }
-}
-
-.explain-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 12px 16px;
-  border-bottom: 1px solid rgba(255,255,255,0.1);
-  flex-shrink: 0;
-}
-
-.explain-header h3 {
-  font-size: 16px;
-  font-weight: 600;
-  color: #e0e0e0;
-}
-
-.explain-close {
-  background: none;
-  border: none;
-  color: #aaa;
-  font-size: 22px;
-  cursor: pointer;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 6px;
-}
-
-.explain-close:hover { background: rgba(255,255,255,0.1); color: #fff; }
-
-.explain-body {
-  flex: 1;
-  overflow-y: auto;
-  padding: 16px;
-  font-size: 15px;
-  line-height: 1.7;
-  color: #d0d0d0;
-  user-select: text;
-  -webkit-user-select: text;
-}
-
-.explain-body::-webkit-scrollbar { width: 6px; }
-.explain-body::-webkit-scrollbar-track { background: transparent; }
-.explain-body::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.15); border-radius: 3px; }
-
-.explain-loading {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  height: 100%;
-  gap: 16px;
-  color: #888;
-}
-
-.explain-loading .spinner {
-  margin: 0;
-}
-
-/* Explain result formatting */
-.explain-body h4 {
-  color: #5a7;
-  font-size: 14px;
-  font-weight: 600;
-  margin: 18px 0 8px 0;
-  padding-bottom: 4px;
-  border-bottom: 1px solid rgba(85,170,119,0.2);
-}
-
-.explain-body h4:first-child { margin-top: 0; }
-
-.explain-body .en-sentence {
-  background: rgba(255,255,255,0.05);
-  border-left: 3px solid #5a7;
-  padding: 8px 12px;
-  margin: 6px 0;
-  border-radius: 0 6px 6px 0;
-  font-size: 15px;
-  color: #e8e8e8;
-  cursor: pointer;
-  display: flex;
-  align-items: flex-start;
-  gap: 8px;
-  transition: background 0.15s;
-}
-
-.explain-body .en-sentence:hover {
-  background: rgba(85,170,119,0.1);
-}
-
-.explain-body .en-sentence::before {
-  content: '';
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  margin-top: 2px;
-  background: currentColor;
-  opacity: 0.4;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z'/%3E%3C/svg%3E") center/contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z'/%3E%3C/svg%3E") center/contain no-repeat;
-}
-
-.explain-body .en-sentence:hover::before {
-  opacity: 0.9;
-}
-
-.explain-body .en-sentence.speaking {
-  background: rgba(85,170,119,0.15);
-}
-
-.explain-body .en-sentence.speaking::before {
-  opacity: 1;
-  color: #5a7;
-}
-
-.explain-body .ko-meaning {
-  padding: 4px 12px 4px 16px;
-  color: #aaa;
-  font-size: 14px;
-}
-
-.explain-body .commentary {
-  padding: 6px 12px 12px 16px;
-  color: #8ab;
-  font-size: 13px;
-  line-height: 1.6;
-}
-
-/* Clickable vocab words */
-.explain-body .vocab-word {
-  color: #e0a040;
-  cursor: pointer;
-  border-bottom: 1px dotted rgba(224,160,64,0.4);
-  transition: all 0.15s;
-}
-
-.explain-body .vocab-word:hover {
-  color: #fc4;
-  border-bottom-color: #fc4;
-}
-
-/* Word examples inline section */
-.word-examples {
-  margin: 6px 0 10px 16px;
-  padding: 10px 14px;
-  background: rgba(224,160,64,0.08);
-  border-left: 3px solid #e0a040;
-  border-radius: 0 8px 8px 0;
-  animation: fadeSlide 0.2s ease-out;
-}
-
-@keyframes fadeSlide {
-  from { opacity: 0; transform: translateY(-6px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.word-examples-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.word-examples-title {
-  font-size: 13px;
-  font-weight: 600;
-  color: #e0a040;
-}
-
-.word-examples-close {
-  background: none;
-  border: none;
-  color: #888;
-  font-size: 16px;
-  cursor: pointer;
-  width: 22px;
-  height: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-}
-
-.word-examples-close:hover { color: #fff; background: rgba(255,255,255,0.1); }
-
-.word-examples .ex-en {
-  font-size: 13px;
-  color: #ddd;
-  margin: 6px 0 2px;
-  cursor: pointer;
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
-  transition: color 0.15s;
-}
-
-.word-examples .ex-en:hover { color: #5a7; }
-
-.word-examples .ex-en::before {
-  content: '';
-  flex-shrink: 0;
-  width: 14px;
-  height: 14px;
-  margin-top: 2px;
-  background: currentColor;
-  opacity: 0.35;
-  -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z'/%3E%3C/svg%3E") center/contain no-repeat;
-  mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z'/%3E%3C/svg%3E") center/contain no-repeat;
-}
-
-.word-examples .ex-en:hover::before { opacity: 0.8; }
-.word-examples .ex-en.speaking { color: #5a7; }
-.word-examples .ex-en.speaking::before { opacity: 1; }
-
-.word-examples .ex-ko {
-  font-size: 12px;
-  color: #999;
-  margin: 0 0 4px 20px;
-}
-
-.word-examples .ex-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #888;
-  font-size: 12px;
-}
-
-.word-examples .ex-loading .mini-spinner {
-  width: 14px; height: 14px;
-  border: 2px solid rgba(255,255,255,0.15);
-  border-top-color: #e0a040;
-  border-radius: 50%;
-  animation: spin 0.7s linear infinite;
-}
-
-.explain-error {
-  color: #e66;
-  text-align: center;
-  padding: 20px;
-}
-
-/* Page wrapper for canvas + explain btn */
-.page-wrapper {
-  position: relative;
-  display: inline-flex;
-  flex-shrink: 0;
-}
-
-/* Explain button overlay on each page */
-.page-explain-btn {
-  position: absolute;
-  top: 56px;
-  right: 8px;
-  width: 36px;
-  height: 36px;
-  background: rgba(0,0,0,0.55);
-  border: 1.5px solid rgba(85,170,119,0.5);
-  color: #5a7;
-  font-size: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  cursor: pointer;
-  z-index: 16;
-  transition: all 0.2s;
-  opacity: 0;
-  pointer-events: none;
-  backdrop-filter: blur(4px);
-  -webkit-backdrop-filter: blur(4px);
-}
-
-.page-explain-btn.visible {
-  opacity: 1;
-  pointer-events: auto;
-}
-
-.page-explain-btn:hover {
-  background: rgba(85,170,119,0.85);
-  border-color: #5a7;
-  color: #fff;
-  transform: scale(1.1);
-}
-
-.page-explain-btn:active {
-  transform: scale(0.95);
-}
-
-/* Left page: button on left side */
-.page-explain-btn.left-page {
-  right: auto;
-  left: 8px;
-}
-
-/* SVG icon inside */
-.page-explain-btn svg {
-  width: 18px;
-  height: 18px;
-  fill: currentColor;
-}
-
-/* TTS Settings Dropdown */
-#ttsSettingsBtn { font-size: 16px; }
-
-#ttsDropdown {
-  display: none;
-  position: absolute;
-  top: 44px;
-  right: 0;
-  width: 280px;
-  background: #2a2a2a;
-  border: 1px solid rgba(255,255,255,0.12);
-  border-radius: 10px;
-  padding: 14px;
-  z-index: 25;
-  box-shadow: 0 8px 24px rgba(0,0,0,0.5);
-}
-
-#ttsDropdown.open { display: block; }
-
-.tts-row {
-  margin-bottom: 12px;
-}
-
-.tts-row:last-child { margin-bottom: 0; }
-
-.tts-label {
-  font-size: 12px;
-  color: #999;
-  margin-bottom: 6px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.tts-label span { color: #5a7; font-weight: 600; }
-
-#ttsVoiceSelect {
-  width: 100%;
-  padding: 6px 8px;
-  font-size: 13px;
-  background: #333;
-  color: #ddd;
-  border: 1px solid rgba(255,255,255,0.1);
-  border-radius: 6px;
-  outline: none;
-  cursor: pointer;
-}
-
-#ttsVoiceSelect:focus { border-color: #5a7; }
-
-#ttsRateSlider {
-  width: 100%;
-  height: 4px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: rgba(255,255,255,0.15);
-  border-radius: 2px;
-  outline: none;
-  cursor: pointer;
-}
-
-#ttsRateSlider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: #5a7;
-  cursor: pointer;
-}
-
-#ttsRateSlider::-moz-range-thumb {
-  width: 14px; height: 14px;
-  border-radius: 50%;
-  background: #5a7;
-  border: none;
-  cursor: pointer;
-}
-
-.tts-test-btn {
-  width: 100%;
-  padding: 7px;
-  font-size: 12px;
-  background: rgba(85,170,119,0.15);
-  border: 1px solid rgba(85,170,119,0.3);
-  color: #5a7;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.15s;
-}
-
-.tts-test-btn:hover {
-  background: #5a7;
-  color: #fff;
-}
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>E-Book PDF Viewer</title>
+  <style>
+    *,
+    *::before,
+    *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: #1a1a1a;
+      color: #e0e0e0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      overflow: hidden;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    /* Drop Zone / Welcome Screen */
+    #dropZone {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+      background: #1a1a1a;
+      transition: background 0.2s;
+    }
+
+    #dropZone.drag-over {
+      background: #2a2a3a;
+    }
+
+    #dropZone.hidden {
+      display: none;
+    }
+
+    .drop-content {
+      text-align: center;
+      pointer-events: none;
+    }
+
+    .drop-icon {
+      font-size: 64px;
+      margin-bottom: 20px;
+      opacity: 0.6;
+    }
+
+    .drop-text {
+      font-size: 22px;
+      margin-bottom: 12px;
+      opacity: 0.8;
+    }
+
+    .drop-sub {
+      font-size: 14px;
+      opacity: 0.5;
+      margin-bottom: 28px;
+    }
+
+    #fileBtn {
+      pointer-events: auto;
+      padding: 12px 32px;
+      font-size: 16px;
+      border: 2px solid #5a7;
+      background: transparent;
+      color: #5a7;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    #fileBtn:hover {
+      background: #5a7;
+      color: #fff;
+    }
+
+    #fileInput {
+      display: none;
+    }
+
+    /* Viewer Container */
+    #viewer {
+      display: none;
+      width: 100%;
+      height: 100%;
+      position: relative;
+    }
+
+    #viewer.active {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Canvas Container */
+    #canvasContainer {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      position: relative;
+      gap: 4px;
+    }
+
+    #canvasContainer canvas {
+      display: block;
+      flex-shrink: 0;
+    }
+
+    /* Page divider line in dual mode */
+    .page-divider {
+      width: 1px;
+      background: rgba(255, 255, 255, 0.08);
+      align-self: stretch;
+      flex-shrink: 0;
+    }
+
+    /* Top Bar */
+    #topBar {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 48px;
+      background: linear-gradient(to bottom, rgba(0, 0, 0, 0.7), transparent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      z-index: 20;
+      opacity: 1;
+      transition: opacity 0.3s;
+    }
+
+    #topBar.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #topBar .left,
+    #topBar .right {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Bottom Bar */
+    #bottomBar {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      height: 56px;
+      background: linear-gradient(to top, rgba(0, 0, 0, 0.7), transparent);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      z-index: 20;
+      opacity: 1;
+      transition: opacity 0.3s;
+    }
+
+    #bottomBar.hidden {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    #pageSlider {
+      flex: 1;
+      height: 6px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 3px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #pageSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #5a7;
+      cursor: pointer;
+    }
+
+    #pageSlider::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #5a7;
+      border: none;
+      cursor: pointer;
+    }
+
+    #pageInfo {
+      font-size: 14px;
+      min-width: 100px;
+      text-align: right;
+      white-space: nowrap;
+    }
+
+    /* Navigation Arrows */
+    .nav-arrow {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 48px;
+      height: 80px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 28px;
+      color: rgba(255, 255, 255, 0.6);
+      cursor: pointer;
+      z-index: 15;
+      border-radius: 8px;
+      transition: all 0.2s;
+      background: rgba(0, 0, 0, 0.2);
+    }
+
+    .nav-arrow:hover {
+      background: rgba(0, 0, 0, 0.5);
+      color: #fff;
+    }
+
+    #prevBtn {
+      left: 8px;
+    }
+
+    #nextBtn {
+      right: 8px;
+    }
+
+    /* Buttons */
+    .btn {
+      background: none;
+      border: none;
+      color: #e0e0e0;
+      font-size: 18px;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      border-radius: 6px;
+      transition: background 0.2s;
+    }
+
+    .btn:hover {
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    .btn-text {
+      font-size: 13px;
+      width: auto;
+      padding: 0 10px;
+      white-space: nowrap;
+    }
+
+    .btn.active {
+      background: rgba(85, 170, 119, 0.3);
+      color: #5a7;
+    }
+
+    /* View mode indicator */
+    .view-mode-label {
+      font-size: 11px;
+      opacity: 0.5;
+      margin-right: 2px;
+    }
+
+    /* Loading */
+    #loading {
+      position: absolute;
+      inset: 0;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 50;
+      font-size: 18px;
+    }
+
+    #loading.active {
+      display: flex;
+    }
+
+    .spinner {
+      width: 40px;
+      height: 40px;
+      border: 3px solid rgba(255, 255, 255, 0.2);
+      border-top-color: #5a7;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-right: 12px;
+    }
+
+    @keyframes spin {
+      to {
+        transform: rotate(360deg);
+      }
+    }
+
+    /* Page number toast */
+    #pageToast {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      font-size: 48px;
+      font-weight: 300;
+      padding: 16px 32px;
+      border-radius: 12px;
+      z-index: 30;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    #pageToast.visible {
+      opacity: 1;
+    }
+
+    /* Zoom info */
+    #zoomInfo {
+      position: absolute;
+      bottom: 70px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.7);
+      color: #fff;
+      font-size: 14px;
+      padding: 6px 14px;
+      border-radius: 6px;
+      z-index: 30;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+    }
+
+    #zoomInfo.visible {
+      opacity: 1;
+    }
+
+    /* Mode toast */
+    #modeToast {
+      position: absolute;
+      top: 60px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font-size: 14px;
+      padding: 8px 18px;
+      border-radius: 8px;
+      z-index: 30;
+      opacity: 0;
+      transition: opacity 0.2s;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
+    #modeToast.visible {
+      opacity: 1;
+    }
+
+    /* Explain Panel */
+    #explainOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 200;
+      display: none;
+      align-items: stretch;
+      justify-content: flex-end;
+    }
+
+    #explainOverlay.active {
+      display: flex;
+    }
+
+    /* Left side mode for right-page explain in dual view */
+    #explainOverlay.left-side {
+      justify-content: flex-start;
+    }
+
+    #explainPanel {
+      width: min(520px, 90vw);
+      height: 100%;
+      background: #222;
+      border-left: 1px solid rgba(255, 255, 255, 0.1);
+      display: flex;
+      flex-direction: column;
+      animation: slideIn 0.25s ease-out;
+    }
+
+    #explainOverlay.left-side #explainPanel {
+      order: -1;
+      border-left: none;
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+      animation: slideInLeft 0.25s ease-out;
+    }
+
+    @keyframes slideIn {
+      from {
+        transform: translateX(100%);
+      }
+
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    @keyframes slideInLeft {
+      from {
+        transform: translateX(-100%);
+      }
+
+      to {
+        transform: translateX(0);
+      }
+    }
+
+    .explain-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 12px 16px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+      flex-shrink: 0;
+    }
+
+    .explain-header h3 {
+      font-size: 16px;
+      font-weight: 600;
+      color: #e0e0e0;
+    }
+
+    .explain-close {
+      background: none;
+      border: none;
+      color: #aaa;
+      font-size: 22px;
+      cursor: pointer;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 6px;
+    }
+
+    .explain-close:hover {
+      background: rgba(255, 255, 255, 0.1);
+      color: #fff;
+    }
+
+    .explain-body {
+      flex: 1;
+      overflow-y: auto;
+      padding: 16px;
+      font-size: 15px;
+      line-height: 1.7;
+      color: #d0d0d0;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    .explain-body::-webkit-scrollbar {
+      width: 6px;
+    }
+
+    .explain-body::-webkit-scrollbar-track {
+      background: transparent;
+    }
+
+    .explain-body::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 3px;
+    }
+
+    .explain-loading {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      gap: 16px;
+      color: #888;
+    }
+
+    .explain-loading .spinner {
+      margin: 0;
+    }
+
+    /* Explain result formatting */
+    .explain-body h4 {
+      color: #5a7;
+      font-size: 14px;
+      font-weight: 600;
+      margin: 18px 0 8px 0;
+      padding-bottom: 4px;
+      border-bottom: 1px solid rgba(85, 170, 119, 0.2);
+    }
+
+    .explain-body h4:first-child {
+      margin-top: 0;
+    }
+
+    .explain-body .en-sentence {
+      background: rgba(255, 255, 255, 0.05);
+      border-left: 3px solid #5a7;
+      padding: 8px 12px;
+      margin: 6px 0;
+      border-radius: 0 6px 6px 0;
+      font-size: 15px;
+      color: #e8e8e8;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      transition: background 0.15s;
+    }
+
+    .explain-body .en-sentence:hover {
+      background: rgba(85, 170, 119, 0.1);
+    }
+
+    .explain-body .en-sentence::before {
+      content: '';
+      flex-shrink: 0;
+      width: 18px;
+      height: 18px;
+      margin-top: 2px;
+      background: currentColor;
+      opacity: 0.4;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z'/%3E%3C/svg%3E") center/contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+
+    .explain-body .en-sentence:hover::before {
+      opacity: 0.9;
+    }
+
+    .explain-body .en-sentence.speaking {
+      background: rgba(85, 170, 119, 0.15);
+    }
+
+    .explain-body .en-sentence.speaking::before {
+      opacity: 1;
+      color: #5a7;
+    }
+
+    .explain-body .ko-meaning {
+      padding: 4px 12px 4px 16px;
+      color: #aaa;
+      font-size: 14px;
+    }
+
+    .explain-body .commentary {
+      padding: 6px 12px 12px 16px;
+      color: #8ab;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    /* Clickable vocab words */
+    .explain-body .vocab-word {
+      color: #e0a040;
+      cursor: pointer;
+      border-bottom: 1px dotted rgba(224, 160, 64, 0.4);
+      transition: all 0.15s;
+    }
+
+    .explain-body .vocab-word:hover {
+      color: #fc4;
+      border-bottom-color: #fc4;
+    }
+
+    /* Word examples inline section */
+    .word-examples {
+      margin: 6px 0 10px 16px;
+      padding: 10px 14px;
+      background: rgba(224, 160, 64, 0.08);
+      border-left: 3px solid #e0a040;
+      border-radius: 0 8px 8px 0;
+      animation: fadeSlide 0.2s ease-out;
+    }
+
+    @keyframes fadeSlide {
+      from {
+        opacity: 0;
+        transform: translateY(-6px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .word-examples-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 8px;
+    }
+
+    .word-examples-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: #e0a040;
+    }
+
+    .word-examples-close {
+      background: none;
+      border: none;
+      color: #888;
+      font-size: 16px;
+      cursor: pointer;
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 4px;
+    }
+
+    .word-examples-close:hover {
+      color: #fff;
+      background: rgba(255, 255, 255, 0.1);
+    }
+
+    .word-examples .ex-en {
+      font-size: 13px;
+      color: #ddd;
+      margin: 6px 0 2px;
+      cursor: pointer;
+      display: flex;
+      align-items: flex-start;
+      gap: 6px;
+      transition: color 0.15s;
+    }
+
+    .word-examples .ex-en:hover {
+      color: #5a7;
+    }
+
+    .word-examples .ex-en::before {
+      content: '';
+      flex-shrink: 0;
+      width: 14px;
+      height: 14px;
+      margin-top: 2px;
+      background: currentColor;
+      opacity: 0.35;
+      -webkit-mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z'/%3E%3C/svg%3E") center/contain no-repeat;
+      mask: url("data:image/svg+xml,%3Csvg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02z'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+
+    .word-examples .ex-en:hover::before {
+      opacity: 0.8;
+    }
+
+    .word-examples .ex-en.speaking {
+      color: #5a7;
+    }
+
+    .word-examples .ex-en.speaking::before {
+      opacity: 1;
+    }
+
+    .word-examples .ex-ko {
+      font-size: 12px;
+      color: #999;
+      margin: 0 0 4px 20px;
+    }
+
+    .word-examples .ex-loading {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      color: #888;
+      font-size: 12px;
+    }
+
+    .word-examples .ex-loading .mini-spinner {
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255, 255, 255, 0.15);
+      border-top-color: #e0a040;
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    .explain-error {
+      color: #e66;
+      text-align: center;
+      padding: 20px;
+    }
+
+    /* Page wrapper for canvas + explain btn */
+    .page-wrapper {
+      position: relative;
+      display: inline-flex;
+      flex-shrink: 0;
+    }
+
+    /* Explain button overlay on each page */
+    .page-explain-btn {
+      position: absolute;
+      top: 56px;
+      right: 8px;
+      width: 36px;
+      height: 36px;
+      background: rgba(0, 0, 0, 0.55);
+      border: 1.5px solid rgba(85, 170, 119, 0.5);
+      color: #5a7;
+      font-size: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      cursor: pointer;
+      z-index: 16;
+      transition: all 0.2s;
+      opacity: 0;
+      pointer-events: none;
+      backdrop-filter: blur(4px);
+      -webkit-backdrop-filter: blur(4px);
+    }
+
+    .page-explain-btn.visible {
+      opacity: 1;
+      pointer-events: auto;
+    }
+
+    .page-explain-btn:hover {
+      background: rgba(85, 170, 119, 0.85);
+      border-color: #5a7;
+      color: #fff;
+      transform: scale(1.1);
+    }
+
+    .page-explain-btn:active {
+      transform: scale(0.95);
+    }
+
+    /* Left page: button on left side */
+    .page-explain-btn.left-page {
+      right: auto;
+      left: 8px;
+    }
+
+    /* SVG icon inside */
+    .page-explain-btn svg {
+      width: 18px;
+      height: 18px;
+      fill: currentColor;
+    }
+
+    /* TTS Settings Dropdown */
+    #ttsSettingsBtn {
+      font-size: 16px;
+    }
+
+    #ttsDropdown {
+      display: none;
+      position: absolute;
+      top: 44px;
+      right: 0;
+      width: 280px;
+      background: #2a2a2a;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: 10px;
+      padding: 14px;
+      z-index: 25;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.5);
+    }
+
+    #ttsDropdown.open {
+      display: block;
+    }
+
+    .tts-row {
+      margin-bottom: 12px;
+    }
+
+    .tts-row:last-child {
+      margin-bottom: 0;
+    }
+
+    .tts-label {
+      font-size: 12px;
+      color: #999;
+      margin-bottom: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tts-label span {
+      color: #5a7;
+      font-weight: 600;
+    }
+
+    #ttsVoiceSelect {
+      width: 100%;
+      padding: 6px 8px;
+      font-size: 13px;
+      background: #333;
+      color: #ddd;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 6px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #ttsVoiceSelect:focus {
+      border-color: #5a7;
+    }
+
+    #ttsRateSlider {
+      width: 100%;
+      height: 4px;
+      -webkit-appearance: none;
+      appearance: none;
+      background: rgba(255, 255, 255, 0.15);
+      border-radius: 2px;
+      outline: none;
+      cursor: pointer;
+    }
+
+    #ttsRateSlider::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #5a7;
+      cursor: pointer;
+    }
+
+    #ttsRateSlider::-moz-range-thumb {
+      width: 14px;
+      height: 14px;
+      border-radius: 50%;
+      background: #5a7;
+      border: none;
+      cursor: pointer;
+    }
+
+    .tts-test-btn {
+      width: 100%;
+      padding: 7px;
+      font-size: 12px;
+      background: rgba(85, 170, 119, 0.15);
+      border: 1px solid rgba(85, 170, 119, 0.3);
+      color: #5a7;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .tts-test-btn:hover {
+      background: #5a7;
+      color: #fff;
+    }
+  </style>
 </head>
+
 <body>
 
-<!-- Drop Zone -->
-<div id="dropZone">
-  <div class="drop-content">
-    <div class="drop-icon">📖</div>
-    <div class="drop-text">PDF 파일을 드래그하거나 선택하세요</div>
-    <div class="drop-sub">이미지 기반 PDF에 최적화된 뷰어</div>
-    <button id="fileBtn">파일 선택</button>
-  </div>
-  <input type="file" id="fileInput" accept=".pdf">
-</div>
-
-<!-- Loading -->
-<div id="loading"><div class="spinner"></div><span>PDF 로딩 중...</span></div>
-
-<!-- Viewer -->
-<div id="viewer">
-  <!-- Top Bar -->
-  <div id="topBar">
-    <div class="left">
-      <button class="btn btn-text" id="openBtn" title="다른 파일 열기">📂 파일</button>
-      <span id="fileName" style="font-size:13px;opacity:0.7;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+  <!-- Drop Zone -->
+  <div id="dropZone">
+    <div class="drop-content">
+      <div class="drop-icon">📖</div>
+      <div class="drop-text">PDF 파일을 드래그하거나 선택하세요</div>
+      <div class="drop-sub">이미지 기반 PDF에 최적화된 뷰어</div>
+      <button id="fileBtn">파일 선택</button>
     </div>
-    <div class="right" style="position:relative;">
-      <button class="btn" id="ttsSettingsBtn" title="음성 설정">🔊</button>
-      <div id="ttsDropdown">
-        <div class="tts-row">
-          <div class="tts-label">음성<span id="ttsVoiceName">기본</span></div>
-          <select id="ttsVoiceSelect"><option value="">로딩 중...</option></select>
-        </div>
-        <div class="tts-row">
-          <div class="tts-label">속도<span id="ttsRateVal">1.0x</span></div>
-          <input type="range" id="ttsRateSlider" min="0.5" max="2.0" step="0.1" value="0.9">
-        </div>
-        <div class="tts-row">
-          <button class="tts-test-btn" id="ttsTestBtn">테스트 재생</button>
-        </div>
-      </div>
-      <button class="btn btn-text" id="viewModeBtn" title="보기 모드 전환 (D)">1쪽</button>
-      <span style="width:1px;height:20px;background:rgba(255,255,255,0.15);"></span>
-      <button class="btn" id="zoomOutBtn" title="축소 (-)">−</button>
-      <button class="btn" id="fitBtn" title="화면에 맞춤" style="font-size:14px;">⊡</button>
-      <button class="btn" id="zoomInBtn" title="확대 (+)">+</button>
-      <button class="btn" id="fullscreenBtn" title="전체화면 (F)">⛶</button>
-    </div>
+    <input type="file" id="fileInput" accept=".pdf">
   </div>
 
-  <!-- Canvas -->
-  <div id="canvasContainer"></div>
-
-  <!-- Navigation -->
-  <div class="nav-arrow" id="prevBtn">‹</div>
-  <div class="nav-arrow" id="nextBtn">›</div>
-
-  <!-- Bottom Bar -->
-  <div id="bottomBar">
-    <input type="range" id="pageSlider" min="1" max="1" value="1">
-    <span id="pageInfo">1 / 1</span>
+  <!-- Loading -->
+  <div id="loading">
+    <div class="spinner"></div><span>PDF 로딩 중...</span>
   </div>
 
-  <!-- Toasts -->
-  <div id="pageToast"></div>
-  <div id="zoomInfo"></div>
-  <div id="modeToast"></div>
-
-  <!-- Explain Panel Overlay -->
-  <div id="explainOverlay">
-    <div style="flex:1;" id="explainOverlayBg"></div>
-    <div id="explainPanel">
-      <div class="explain-header">
-        <h3 id="explainTitle">페이지 해설</h3>
-        <button class="explain-close" id="explainClose">&times;</button>
+  <!-- Viewer -->
+  <div id="viewer">
+    <!-- Top Bar -->
+    <div id="topBar">
+      <div class="left">
+        <button class="btn btn-text" id="openBtn" title="다른 파일 열기">📂 파일</button>
+        <span id="fileName"
+          style="font-size:13px;opacity:0.7;max-width:300px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
       </div>
-      <div class="explain-body" id="explainBody">
-        <div class="explain-loading">
-          <div class="spinner"></div>
-          <span>Gemini가 페이지를 분석 중...</span>
+      <div class="right" style="position:relative;">
+        <button class="btn" id="ttsSettingsBtn" title="음성 설정">🔊</button>
+        <div id="ttsDropdown">
+          <div class="tts-row">
+            <div class="tts-label">음성<span id="ttsVoiceName">기본</span></div>
+            <select id="ttsVoiceSelect">
+              <option value="">로딩 중...</option>
+            </select>
+          </div>
+          <div class="tts-row">
+            <div class="tts-label">속도<span id="ttsRateVal">1.0x</span></div>
+            <input type="range" id="ttsRateSlider" min="0.5" max="2.0" step="0.1" value="0.9">
+          </div>
+          <div class="tts-row">
+            <button class="tts-test-btn" id="ttsTestBtn">테스트 재생</button>
+          </div>
         </div>
+        <button class="btn btn-text" id="viewModeBtn" title="보기 모드 전환 (D)">1쪽</button>
+        <span style="width:1px;height:20px;background:rgba(255,255,255,0.15);"></span>
+        <button class="btn" id="zoomOutBtn" title="축소 (-)">−</button>
+        <button class="btn" id="fitBtn" title="화면에 맞춤" style="font-size:14px;">⊡</button>
+        <button class="btn" id="zoomInBtn" title="확대 (+)">+</button>
+        <button class="btn" id="fullscreenBtn" title="전체화면 (F)">⛶</button>
       </div>
     </div>
+
+    <!-- Canvas -->
+    <div id="canvasContainer"></div>
+
+    <!-- Navigation -->
+    <div class="nav-arrow" id="prevBtn">‹</div>
+    <div class="nav-arrow" id="nextBtn">›</div>
+
+    <!-- Bottom Bar -->
+    <div id="bottomBar">
+      <input type="range" id="pageSlider" min="1" max="1" value="1">
+      <span id="pageInfo">1 / 1</span>
+    </div>
+
+    <!-- Toasts -->
+    <div id="pageToast"></div>
+    <div id="zoomInfo"></div>
+    <div id="modeToast"></div>
+
+    <!-- Explain Panel Overlay -->
+    <div id="explainOverlay">
+      <div style="flex:1;" id="explainOverlayBg"></div>
+      <div id="explainPanel">
+        <div class="explain-header">
+          <h3 id="explainTitle">페이지 해설</h3>
+          <button class="explain-close" id="explainClose">&times;</button>
+        </div>
+        <div class="explain-body" id="explainBody">
+          <div class="explain-loading">
+            <div class="spinner"></div>
+            <span>Gemini가 페이지를 분석 중...</span>
+          </div>
+        </div>
+      </div>
+    </div>
   </div>
-</div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs" type="module"></script>
-<script type="module">
-// PDF.js setup
-const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs');
-pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs';
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs" type="module"></script>
+  <script type="module">
+    // PDF.js setup
+    const pdfjsLib = await import('https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.min.mjs');
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.9.155/pdf.worker.min.mjs';
 
-// DOM Elements
-const dropZone = document.getElementById('dropZone');
-const fileBtn = document.getElementById('fileBtn');
-const fileInput = document.getElementById('fileInput');
-const viewer = document.getElementById('viewer');
-const container = document.getElementById('canvasContainer');
-const loading = document.getElementById('loading');
-const topBar = document.getElementById('topBar');
-const bottomBar = document.getElementById('bottomBar');
-const pageSlider = document.getElementById('pageSlider');
-const pageInfo = document.getElementById('pageInfo');
-const pageToast = document.getElementById('pageToast');
-const zoomInfoEl = document.getElementById('zoomInfo');
-const modeToast = document.getElementById('modeToast');
-const fileNameEl = document.getElementById('fileName');
-const viewModeBtn = document.getElementById('viewModeBtn');
+    // DOM Elements
+    const dropZone = document.getElementById('dropZone');
+    const fileBtn = document.getElementById('fileBtn');
+    const fileInput = document.getElementById('fileInput');
+    const viewer = document.getElementById('viewer');
+    const container = document.getElementById('canvasContainer');
+    const loading = document.getElementById('loading');
+    const topBar = document.getElementById('topBar');
+    const bottomBar = document.getElementById('bottomBar');
+    const pageSlider = document.getElementById('pageSlider');
+    const pageInfo = document.getElementById('pageInfo');
+    const pageToast = document.getElementById('pageToast');
+    const zoomInfoEl = document.getElementById('zoomInfo');
+    const modeToast = document.getElementById('modeToast');
+    const fileNameEl = document.getElementById('fileName');
+    const viewModeBtn = document.getElementById('viewModeBtn');
 
-// State
-let pdfDoc = null;
-let currentPage = 1;
-let totalPages = 0;
-let userScale = 1.0;
-let rendering = false;
-let pendingPage = null;
-let uiTimeout = null;
-let toastTimeout = null;
-let zoomTimeout = null;
-let modeToastTimeout = null;
+    // State
+    let pdfDoc = null;
+    let currentPage = 1;
+    let totalPages = 0;
+    let userScale = 1.0;
+    let rendering = false;
+    let pendingPage = null;
+    let uiTimeout = null;
+    let toastTimeout = null;
+    let zoomTimeout = null;
+    let modeToastTimeout = null;
 
-// View mode: 'single', 'dual', 'auto'
-let viewMode = 'auto';
+    // View mode: 'single', 'dual', 'auto'
+    let viewMode = 'auto';
 
-// Current file name for localStorage key
-let currentFileName = '';
+    // Current file name for localStorage key
+    let currentFileName = '';
 
-// Canvas cache: pageNum -> { canvas, cssWidth, cssHeight }
-const pageCache = new Map();
-const MAX_CACHE = 16;
-const BUFFER_PAGES = 2;
+    // Canvas cache: pageNum -> { canvas, cssWidth, cssHeight }
+    const pageCache = new Map();
+    const MAX_CACHE = 16;
+    const BUFFER_PAGES = 2;
 
-// ==================== View Mode ====================
+    // ==================== View Mode ====================
 
-function isLandscape() {
-  return container.clientWidth > container.clientHeight;
-}
+    function isLandscape() {
+      return container.clientWidth > container.clientHeight;
+    }
 
-// Determine effective display mode based on viewMode setting and screen
-function getEffectiveMode() {
-  if (viewMode === 'auto') return isLandscape() ? 'dual' : 'single';
-  return viewMode;
-}
+    // Determine effective display mode based on viewMode setting and screen
+    function getEffectiveMode() {
+      if (viewMode === 'auto') return isLandscape() ? 'dual' : 'single';
+      return viewMode;
+    }
 
-// Get the page step for navigation (1 for single, 2 for dual but 1st page is cover)
-function getPageStep() {
-  return getEffectiveMode() === 'dual' ? 2 : 1;
-}
+    // Get the page step for navigation (1 for single, 2 for dual but 1st page is cover)
+    function getPageStep() {
+      return getEffectiveMode() === 'dual' ? 2 : 1;
+    }
 
-// In dual mode, get the pair of pages to display.
-// Convention: page 1 is cover (shown alone), then 2-3, 4-5, etc.
-function getDisplayPages() {
-  const mode = getEffectiveMode();
-  if (mode === 'single') {
-    return [currentPage];
-  }
-  // Dual mode
-  if (currentPage === 1) return [1]; // Cover page alone
-  // Ensure currentPage is even for left page (2-3, 4-5, ...)
-  const leftPage = currentPage % 2 === 0 ? currentPage : currentPage - 1;
-  const rightPage = leftPage + 1;
-  if (leftPage < 1) return [1];
-  if (rightPage > totalPages) return [leftPage];
-  return [leftPage, rightPage];
-}
-
-// Snap currentPage to a valid spread start
-function snapToSpreadStart() {
-  if (getEffectiveMode() === 'single') return;
-  if (currentPage === 1) return;
-  // Snap to even page (left side of spread)
-  if (currentPage % 2 !== 0) {
-    currentPage = Math.max(2, currentPage - 1);
-  }
-}
-
-function updateViewModeBtn() {
-  const mode = getEffectiveMode();
-  const labels = {
-    'single': '1쪽',
-    'dual': '2쪽',
-  };
-  const modeLabels = {
-    'auto': 'A',
-    'single': '1',
-    'dual': '2',
-  };
-  viewModeBtn.textContent = viewMode === 'auto'
-    ? `자동(${labels[mode]})`
-    : labels[mode];
-}
-
-function cycleViewMode() {
-  // Cycle: auto -> single -> dual -> auto
-  const order = ['auto', 'single', 'dual'];
-  const idx = order.indexOf(viewMode);
-  viewMode = order[(idx + 1) % order.length];
-
-  updateViewModeBtn();
-  snapToSpreadStart();
-  invalidateCache();
-  renderCurrentPage();
-  showModeToast();
-}
-
-function showModeToast() {
-  const mode = getEffectiveMode();
-  const modeNames = { 'single': '1페이지 보기', 'dual': '2페이지 보기' };
-  const settingNames = { 'auto': '자동', 'single': '고정: 1쪽', 'dual': '고정: 2쪽' };
-  modeToast.textContent = `${modeNames[mode]} (${settingNames[viewMode]})`;
-  modeToast.classList.add('visible');
-  clearTimeout(modeToastTimeout);
-  modeToastTimeout = setTimeout(() => modeToast.classList.remove('visible'), 1500);
-}
-
-viewModeBtn.addEventListener('click', cycleViewMode);
-
-// ==================== Android Bridge ====================
-
-const isAndroid = typeof PdfBridge !== 'undefined';
-
-// Called from Android after page loads
-window.loadPdfFromBase64 = async function(fileName, savedPage) {
-  try {
-    const base64Data = PdfBridge.getFileBase64();
-    if (!base64Data) { console.error('No base64 data'); return; }
-
-    loading.classList.add('active');
-    dropZone.classList.add('hidden');
-    fileNameEl.textContent = fileName;
-
-    const binaryStr = atob(base64Data);
-    const bytes = new Uint8Array(binaryStr.length);
-    for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
-
-    const loadingTask = pdfjsLib.getDocument({
-      data: bytes.buffer,
-      disableAutoFetch: true,
-      disableStream: false,
-    });
-
-    pdfDoc = await loadingTask.promise;
-    totalPages = pdfDoc.numPages;
-    userScale = 1.0;
-    currentFileName = fileName;
-
-    currentPage = savedPage ? Math.min(savedPage, totalPages) || 1 : 1;
-
-    pageSlider.max = totalPages;
-    pageSlider.value = currentPage;
-
-    clearCache();
-    snapToSpreadStart();
-    updateViewModeBtn();
-
-    viewer.classList.add('active');
-    loading.classList.remove('active');
-
-    await renderCurrentPage();
-    showUI();
-  } catch (err) {
-    console.error('PDF load from bridge error:', err);
-    loading.classList.remove('active');
-    dropZone.classList.remove('hidden');
-  }
-};
-
-// Auto-load from bridge on startup
-if (isAndroid) {
-  setTimeout(() => {
-    const fn = PdfBridge.getFileName();
-    const sp = PdfBridge.loadPage();
-    if (fn) loadPdfFromBase64(fn, sp);
-  }, 300);
-}
-
-// ==================== File Loading ====================
-
-fileBtn.addEventListener('click', () => fileInput.click());
-document.getElementById('openBtn').addEventListener('click', () => fileInput.click());
-
-fileInput.addEventListener('change', (e) => {
-  if (e.target.files[0]) loadFile(e.target.files[0]);
-});
-
-dropZone.addEventListener('dragover', (e) => {
-  e.preventDefault();
-  dropZone.classList.add('drag-over');
-});
-
-dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
-
-dropZone.addEventListener('drop', (e) => {
-  e.preventDefault();
-  dropZone.classList.remove('drag-over');
-  const file = e.dataTransfer.files[0];
-  if (file && file.type === 'application/pdf') loadFile(file);
-});
-
-async function loadFile(file) {
-  loading.classList.add('active');
-  dropZone.classList.add('hidden');
-  fileNameEl.textContent = file.name;
-
-  try {
-    const arrayBuffer = await file.arrayBuffer();
-    const loadingTask = pdfjsLib.getDocument({
-      data: arrayBuffer,
-      disableAutoFetch: true,
-      disableStream: false,
-    });
-
-    pdfDoc = await loadingTask.promise;
-    totalPages = pdfDoc.numPages;
-    userScale = 1.0;
-    currentFileName = file.name;
-
-    // Restore last page from localStorage
-    const savedPage = localStorage.getItem('pdfviewer_page_' + currentFileName);
-    currentPage = savedPage ? Math.min(parseInt(savedPage), totalPages) || 1 : 1;
-
-    pageSlider.max = totalPages;
-    pageSlider.value = currentPage;
-
-    clearCache();
-    snapToSpreadStart();
-    updateViewModeBtn();
-
-    viewer.classList.add('active');
-    loading.classList.remove('active');
-
-    await renderCurrentPage();
-    showUI();
-  } catch (err) {
-    console.error('PDF load error:', err);
-    loading.classList.remove('active');
-    dropZone.classList.remove('hidden');
-    alert('PDF 파일을 로드할 수 없습니다.');
-  }
-}
-
-// ==================== Rendering ====================
-
-async function renderPageToCanvas(pageNum) {
-  const page = await pdfDoc.getPage(pageNum);
-  const viewport0 = page.getViewport({ scale: 1 });
-  const dpr = window.devicePixelRatio || 1;
-
-  // Calculate fit scale based on display mode
-  const mode = getEffectiveMode();
-  const cw = container.clientWidth;
-  const ch = container.clientHeight;
-
-  let fitScale;
-  if (mode === 'dual') {
-    // For dual mode, each page gets half the width (minus gap)
-    const halfW = (cw - 8) / 2; // 4px gap on each side of divider
-    fitScale = Math.min(halfW / viewport0.width, ch / viewport0.height);
-  } else {
-    fitScale = Math.min(cw / viewport0.width, ch / viewport0.height);
-  }
-
-  const renderScale = fitScale * userScale;
-  const totalScale = renderScale * dpr;
-
-  const viewport = page.getViewport({ scale: totalScale });
-
-  const canvas = document.createElement('canvas');
-  canvas.width = viewport.width;
-  canvas.height = viewport.height;
-  const cssW = viewport.width / dpr;
-  const cssH = viewport.height / dpr;
-  canvas.style.width = cssW + 'px';
-  canvas.style.height = cssH + 'px';
-
-  const ctx = canvas.getContext('2d');
-  await page.render({ canvasContext: ctx, viewport }).promise;
-
-  return { canvas, cssWidth: cssW, cssHeight: cssH };
-}
-
-async function renderCurrentPage() {
-  if (rendering) {
-    pendingPage = currentPage;
-    return;
-  }
-
-  rendering = true;
-
-  try {
-    const displayPages = getDisplayPages();
-    const cacheKeyPrefix = `${viewMode}_${getEffectiveMode()}_${userScale}_`;
-
-    // Render all needed pages
-    const entries = [];
-    for (const pNum of displayPages) {
-      const cacheKey = cacheKeyPrefix + pNum;
-      let entry = pageCache.get(cacheKey);
-      if (!entry) {
-        entry = await renderPageToCanvas(pNum);
-        addToCache(cacheKey, entry);
+    // In dual mode, get the pair of pages to display.
+    // Convention: page 1 is cover (shown alone), then 2-3, 4-5, etc.
+    function getDisplayPages() {
+      const mode = getEffectiveMode();
+      if (mode === 'single') {
+        return [currentPage];
       }
-      entries.push({ pageNum: pNum, ...entry });
+      // Dual mode
+      if (currentPage === 1) return [1]; // Cover page alone
+      // Ensure currentPage is even for left page (2-3, 4-5, ...)
+      const leftPage = currentPage % 2 === 0 ? currentPage : currentPage - 1;
+      const rightPage = leftPage + 1;
+      if (leftPage < 1) return [1];
+      if (rightPage > totalPages) return [leftPage];
+      return [leftPage, rightPage];
     }
 
-    // Build display
-    container.innerHTML = '';
-
-    const explainIcon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>`;
-
-    for (let i = 0; i < entries.length; i++) {
-      if (i === 1) {
-        // Divider between pages
-        const divider = document.createElement('div');
-        divider.className = 'page-divider';
-        container.appendChild(divider);
-      }
-
-      const wrapper = document.createElement('div');
-      wrapper.className = 'page-wrapper';
-      wrapper.appendChild(entries[i].canvas);
-
-      // Add explain button on each page
-      // Dual mode: left page (i=0) -> top-left, right page (i=1) -> top-right
-      // Single mode: top-right
-      const btn = document.createElement('button');
-      const isLeftPage = entries.length === 2 && i === 0;
-      btn.className = 'page-explain-btn visible' + (isLeftPage ? ' left-page' : '');
-      btn.innerHTML = explainIcon;
-      btn.title = `${entries[i].pageNum}p 해설`;
-      const pNum = entries[i].pageNum;
-      const isRightPage = entries.length === 2 && i === 1;
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        explainPageAction(pNum, isRightPage);
-      });
-      wrapper.appendChild(btn);
-
-      container.appendChild(wrapper);
-    }
-
-    // Update UI
-    updatePageUI(displayPages);
-
-    // Pre-render buffer
-    prerenderBuffer(displayPages, cacheKeyPrefix);
-  } catch (err) {
-    console.error('Render error:', err);
-  }
-
-  rendering = false;
-
-  if (pendingPage !== null) {
-    const next = pendingPage;
-    pendingPage = null;
-    currentPage = next;
-    renderCurrentPage();
-  }
-}
-
-function updatePageUI(displayPages) {
-  pageSlider.value = currentPage;
-  if (displayPages.length === 2) {
-    pageInfo.textContent = `${displayPages[0]}-${displayPages[1]} / ${totalPages}`;
-  } else {
-    pageInfo.textContent = `${displayPages[0]} / ${totalPages}`;
-  }
-
-  // Save current page
-  if (currentFileName) {
-    localStorage.setItem('pdfviewer_page_' + currentFileName, currentPage);
-    if (isAndroid) {
-      try { PdfBridge.savePage(currentPage, totalPages); } catch(e) {}
-    }
-  }
-}
-
-async function prerenderBuffer(displayPages, cacheKeyPrefix) {
-  const mode = getEffectiveMode();
-  const step = getPageStep();
-
-  // Determine pages to pre-render
-  const pagesToPrerender = [];
-  for (let offset = 1; offset <= BUFFER_PAGES; offset++) {
-    // Next spread
-    const nextStart = currentPage + step * offset;
-    if (mode === 'dual') {
-      if (nextStart >= 1 && nextStart <= totalPages) pagesToPrerender.push(nextStart);
-      if (nextStart + 1 >= 1 && nextStart + 1 <= totalPages) pagesToPrerender.push(nextStart + 1);
-    } else {
-      if (nextStart >= 1 && nextStart <= totalPages) pagesToPrerender.push(nextStart);
-    }
-    // Previous spread
-    const prevStart = currentPage - step * offset;
-    if (mode === 'dual') {
-      const pLeft = prevStart % 2 === 0 ? prevStart : prevStart - 1;
-      if (pLeft >= 1 && pLeft <= totalPages) pagesToPrerender.push(pLeft);
-      if (pLeft + 1 >= 1 && pLeft + 1 <= totalPages) pagesToPrerender.push(pLeft + 1);
-    } else {
-      if (prevStart >= 1 && prevStart <= totalPages) pagesToPrerender.push(prevStart);
-    }
-  }
-
-  for (const p of pagesToPrerender) {
-    const key = cacheKeyPrefix + p;
-    if (!pageCache.has(key)) {
-      try {
-        const entry = await renderPageToCanvas(p);
-        addToCache(key, entry);
-      } catch (e) { /* ignore */ }
-    }
-  }
-}
-
-function addToCache(key, entry) {
-  pageCache.set(key, entry);
-  if (pageCache.size > MAX_CACHE) {
-    const keys = [...pageCache.keys()];
-    let worstKey = keys[0];
-    let worstDist = 0;
-    for (const k of keys) {
-      const pNum = parseInt(k.split('_').pop());
-      const dist = Math.abs(pNum - currentPage);
-      if (dist > worstDist) {
-        worstDist = dist;
-        worstKey = k;
+    // Snap currentPage to a valid spread start
+    function snapToSpreadStart() {
+      if (getEffectiveMode() === 'single') return;
+      if (currentPage === 1) return;
+      // Snap to even page (left side of spread)
+      if (currentPage % 2 !== 0) {
+        currentPage = Math.max(2, currentPage - 1);
       }
     }
-    pageCache.delete(worstKey);
-  }
-}
 
-function clearCache() { pageCache.clear(); }
-function invalidateCache() { pageCache.clear(); }
-
-// ==================== Navigation ====================
-
-function goToPage(num) {
-  const target = Math.max(1, Math.min(totalPages, num));
-  if (target !== currentPage) {
-    currentPage = target;
-    if (getEffectiveMode() === 'dual' && currentPage > 1) {
-      // Snap to even
-      if (currentPage % 2 !== 0) currentPage = Math.max(2, currentPage - 1);
+    function updateViewModeBtn() {
+      const mode = getEffectiveMode();
+      const labels = {
+        'single': '1쪽',
+        'dual': '2쪽',
+      };
+      const modeLabels = {
+        'auto': 'A',
+        'single': '1',
+        'dual': '2',
+      };
+      viewModeBtn.textContent = viewMode === 'auto'
+        ? `자동(${labels[mode]})`
+        : labels[mode];
     }
-    renderCurrentPage();
-  }
-}
 
-function nextPage() {
-  const step = getPageStep();
-  const displayPages = getDisplayPages();
-  const lastDisplayed = displayPages[displayPages.length - 1];
-  if (lastDisplayed < totalPages) {
-    goToPage(lastDisplayed + 1);
-  }
-}
+    function cycleViewMode() {
+      // Cycle: auto -> single -> dual -> auto
+      const order = ['auto', 'single', 'dual'];
+      const idx = order.indexOf(viewMode);
+      viewMode = order[(idx + 1) % order.length];
 
-function prevPage() {
-  const step = getPageStep();
-  if (currentPage <= 1) return;
-  if (getEffectiveMode() === 'dual') {
-    if (currentPage === 2 || currentPage === 3) {
-      goToPage(1);
-    } else {
-      goToPage(currentPage - 2);
-    }
-  } else {
-    goToPage(currentPage - 1);
-  }
-}
-
-document.getElementById('prevBtn').addEventListener('click', prevPage);
-document.getElementById('nextBtn').addEventListener('click', nextPage);
-
-pageSlider.addEventListener('input', () => {
-  const val = parseInt(pageSlider.value);
-  showToast(val);
-});
-
-pageSlider.addEventListener('change', () => {
-  goToPage(parseInt(pageSlider.value));
-  hideToast();
-});
-
-// ==================== Zoom ====================
-
-function setZoom(scale) {
-  userScale = Math.max(0.25, Math.min(5.0, scale));
-  invalidateCache();
-  renderCurrentPage();
-  showZoomInfo();
-}
-
-document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(userScale * 1.2));
-document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(userScale / 1.2));
-document.getElementById('fitBtn').addEventListener('click', () => setZoom(1.0));
-
-// ==================== Fullscreen ====================
-
-document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
-
-function toggleFullscreen() {
-  if (!document.fullscreenElement) {
-    document.documentElement.requestFullscreen().catch(() => {});
-  } else {
-    document.exitFullscreen().catch(() => {});
-  }
-}
-
-// ==================== Keyboard ====================
-
-document.addEventListener('keydown', (e) => {
-  if (!pdfDoc) return;
-
-  switch (e.key) {
-    case 'ArrowLeft':
-    case 'ArrowUp':
-    case 'PageUp':
-      e.preventDefault();
-      prevPage();
-      break;
-    case 'ArrowRight':
-    case 'ArrowDown':
-    case 'PageDown':
-    case ' ':
-      e.preventDefault();
-      nextPage();
-      break;
-    case 'Home':
-      e.preventDefault();
-      goToPage(1);
-      break;
-    case 'End':
-      e.preventDefault();
-      goToPage(totalPages);
-      break;
-    case '+':
-    case '=':
-      e.preventDefault();
-      setZoom(userScale * 1.2);
-      break;
-    case '-':
-      e.preventDefault();
-      setZoom(userScale / 1.2);
-      break;
-    case '0':
-      e.preventDefault();
-      setZoom(1.0);
-      break;
-    case 'f':
-    case 'F':
-      e.preventDefault();
-      toggleFullscreen();
-      break;
-    case 'd':
-    case 'D':
-      e.preventDefault();
-      cycleViewMode();
-      break;
-  }
-});
-
-// ==================== Touch / Swipe ====================
-
-let touchStartX = 0;
-let touchStartY = 0;
-let touchStartDist = 0;
-let isSwiping = false;
-
-container.addEventListener('touchstart', (e) => {
-  if (e.touches.length === 1) {
-    touchStartX = e.touches[0].clientX;
-    touchStartY = e.touches[0].clientY;
-    isSwiping = true;
-  } else if (e.touches.length === 2) {
-    isSwiping = false;
-    touchStartDist = getTouchDist(e.touches);
-  }
-}, { passive: true });
-
-container.addEventListener('touchmove', (e) => {
-  if (e.touches.length === 2 && touchStartDist > 0) {
-    e.preventDefault();
-    const dist = getTouchDist(e.touches);
-    const ratio = dist / touchStartDist;
-    if (Math.abs(ratio - 1) > 0.05) {
-      setZoom(userScale * ratio);
-      touchStartDist = dist;
-    }
-  }
-}, { passive: false });
-
-container.addEventListener('touchend', (e) => {
-  if (isSwiping && e.changedTouches.length === 1) {
-    const dx = e.changedTouches[0].clientX - touchStartX;
-    const dy = e.changedTouches[0].clientY - touchStartY;
-    const absDx = Math.abs(dx);
-    const absDy = Math.abs(dy);
-
-    if (absDx > 50 && absDx > absDy * 1.5) {
-      if (dx > 0) prevPage();
-      else nextPage();
-    }
-  }
-  isSwiping = false;
-  touchStartDist = 0;
-}, { passive: true });
-
-function getTouchDist(touches) {
-  const dx = touches[0].clientX - touches[1].clientX;
-  const dy = touches[0].clientY - touches[1].clientY;
-  return Math.sqrt(dx * dx + dy * dy);
-}
-
-// Click on container to toggle UI
-container.addEventListener('click', (e) => {
-  // Don't toggle UI if clicking an explain button
-  if (e.target.closest('.page-explain-btn')) return;
-  toggleUI();
-});
-
-// ==================== UI Visibility ====================
-
-function showUI() {
-  topBar.classList.remove('hidden');
-  bottomBar.classList.remove('hidden');
-  clearTimeout(uiTimeout);
-  uiTimeout = setTimeout(hideUI, 3000);
-}
-
-function hideUI() {
-  topBar.classList.add('hidden');
-  bottomBar.classList.add('hidden');
-}
-
-function toggleUI() {
-  if (topBar.classList.contains('hidden')) showUI();
-  else hideUI();
-}
-
-// Show UI only when mouse enters the top/bottom edge zones (48px)
-topBar.addEventListener('mouseenter', () => clearTimeout(uiTimeout));
-topBar.addEventListener('mouseleave', () => { uiTimeout = setTimeout(hideUI, 2000); });
-bottomBar.addEventListener('mouseenter', () => clearTimeout(uiTimeout));
-bottomBar.addEventListener('mouseleave', () => { uiTimeout = setTimeout(hideUI, 2000); });
-
-document.addEventListener('mousemove', (e) => {
-  if (!pdfDoc) return;
-  // Only show UI when mouse is near the top or bottom edge
-  const y = e.clientY;
-  const h = window.innerHeight;
-  if (y <= 60 || y >= h - 60) {
-    showUI();
-  }
-});
-
-// ==================== Toast / Zoom Info ====================
-
-function showToast(pageNum) {
-  pageToast.textContent = pageNum;
-  pageToast.classList.add('visible');
-  clearTimeout(toastTimeout);
-}
-
-function hideToast() {
-  clearTimeout(toastTimeout);
-  toastTimeout = setTimeout(() => pageToast.classList.remove('visible'), 300);
-}
-
-function showZoomInfo() {
-  const pct = Math.round(userScale * 100);
-  zoomInfoEl.textContent = `${pct}%`;
-  zoomInfoEl.classList.add('visible');
-  clearTimeout(zoomTimeout);
-  zoomTimeout = setTimeout(() => zoomInfoEl.classList.remove('visible'), 1000);
-}
-
-// ==================== Resize / Orientation ====================
-
-let resizeTimer = null;
-let lastEffectiveMode = null;
-
-function onResize() {
-  clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(() => {
-    if (!pdfDoc) return;
-
-    const newMode = getEffectiveMode();
-    if (newMode !== lastEffectiveMode) {
-      // Mode changed due to resize/rotation
-      lastEffectiveMode = newMode;
-      snapToSpreadStart();
       updateViewModeBtn();
+      snapToSpreadStart();
+      invalidateCache();
+      renderCurrentPage();
+      showModeToast();
     }
-    invalidateCache();
-    renderCurrentPage();
-  }, 150);
-}
 
-window.addEventListener('resize', onResize);
-window.addEventListener('orientationchange', onResize);
+    function showModeToast() {
+      const mode = getEffectiveMode();
+      const modeNames = { 'single': '1페이지 보기', 'dual': '2페이지 보기' };
+      const settingNames = { 'auto': '자동', 'single': '고정: 1쪽', 'dual': '고정: 2쪽' };
+      modeToast.textContent = `${modeNames[mode]} (${settingNames[viewMode]})`;
+      modeToast.classList.add('visible');
+      clearTimeout(modeToastTimeout);
+      modeToastTimeout = setTimeout(() => modeToast.classList.remove('visible'), 1500);
+    }
 
-// ==================== Mouse wheel zoom ====================
+    viewModeBtn.addEventListener('click', cycleViewMode);
 
-container.addEventListener('wheel', (e) => {
-  if (e.ctrlKey) {
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-    setZoom(userScale * delta);
-  }
-}, { passive: false });
+    // ==================== Android Bridge ====================
 
-// ==================== Explain (Gemini API) ====================
+    const isAndroid = typeof PdfBridge !== 'undefined';
 
-const GEMINI_API_KEY = isAndroid ? (function(){ try { return PdfBridge.getApiKey(); } catch(e) { return ''; } })() : 'AIzaSyB5ZGyzyLxCAXcH8J1nAJcjSqN5Sfm2_2w';
-const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+    // Called from Android after page loads
+    window.loadPdfFromBase64 = async function (fileName, savedPage) {
+      try {
+        const base64Data = PdfBridge.getFileBase64();
+        if (!base64Data) { console.error('No base64 data'); return; }
 
-const explainOverlay = document.getElementById('explainOverlay');
-const explainBody = document.getElementById('explainBody');
-const explainTitle = document.getElementById('explainTitle');
-const explainClose = document.getElementById('explainClose');
-const explainOverlayBg = document.getElementById('explainOverlayBg');
+        loading.classList.add('active');
+        dropZone.classList.add('hidden');
+        fileNameEl.textContent = fileName;
 
-// Cache: "fileName_pageNum" -> html result
-const explainCache = new Map();
+        const binaryStr = atob(base64Data);
+        const bytes = new Uint8Array(binaryStr.length);
+        for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
 
-explainClose.addEventListener('click', closeExplain);
-explainOverlayBg.addEventListener('click', closeExplain);
+        const loadingTask = pdfjsLib.getDocument({
+          data: bytes.buffer,
+          disableAutoFetch: true,
+          disableStream: false,
+        });
 
-function closeExplain() {
-  try { window.speechSynthesis.cancel(); } catch(e) {}
-  if (isAndroid) { try { PdfBridge.stopSpeaking(); } catch(e) {} }
-  if (speakingEl) {
-    speakingEl.classList.remove('speaking');
-    speakingEl = null;
-  }
-  explainOverlay.classList.remove('active');
-  explainOverlay.classList.remove('left-side');
-}
+        pdfDoc = await loadingTask.promise;
+        totalPages = pdfDoc.numPages;
+        userScale = 1.0;
+        currentFileName = fileName;
 
-document.addEventListener('keydown', (e) => {
-  if (e.key === 'Escape' && explainOverlay.classList.contains('active')) {
-    e.preventDefault();
-    closeExplain();
-    return;
-  }
-  if (!pdfDoc) return;
-  if (e.key === 'e' || e.key === 'E') {
-    if (explainOverlay.classList.contains('active')) return;
-    e.preventDefault();
-    explainPageAction(currentPage);
-  }
-});
+        currentPage = savedPage ? Math.min(savedPage, totalPages) || 1 : 1;
 
-async function explainPageAction(pageNum, isRightPage = false) {
-  const cacheKey = `${currentFileName}_${pageNum}`;
+        pageSlider.max = totalPages;
+        pageSlider.value = currentPage;
 
-  // In dual mode, right page explain opens on the left side
-  if (isRightPage) {
-    explainOverlay.classList.add('left-side');
-  } else {
-    explainOverlay.classList.remove('left-side');
-  }
+        clearCache();
+        snapToSpreadStart();
+        updateViewModeBtn();
 
-  explainTitle.textContent = `페이지 ${pageNum} 해설`;
-  explainOverlay.classList.add('active');
+        viewer.classList.add('active');
+        loading.classList.remove('active');
 
-  // Check cache
-  if (explainCache.has(cacheKey)) {
-    explainBody.innerHTML = explainCache.get(cacheKey);
-    return;
-  }
+        await renderCurrentPage();
+        showUI();
 
-  // Show loading
-  explainBody.innerHTML = `
+        // Capture first page as cover image
+        if (isAndroid) {
+          try {
+            const page = await pdfDoc.getPage(1);
+            const vp = page.getViewport({ scale: 1.0 });
+            const maxSize = 400;
+            const scale = Math.min(maxSize / vp.width, maxSize / vp.height);
+            const scaledVp = page.getViewport({ scale });
+
+            const cvs = document.createElement('canvas');
+            cvs.width = scaledVp.width;
+            cvs.height = scaledVp.height;
+            const ctx = cvs.getContext('2d');
+
+            await page.render({ canvasContext: ctx, viewport: scaledVp }).promise;
+            const dataUrl = cvs.toDataURL('image/png');
+            const base64 = dataUrl.split(',')[1];
+            PdfBridge.saveCover(base64);
+          } catch (e) {
+            console.error('Cover capture error:', e);
+          }
+        }
+      } catch (err) {
+        console.error('PDF load from bridge error:', err);
+        loading.classList.remove('active');
+        dropZone.classList.remove('hidden');
+      }
+    };
+
+    // Auto-load from bridge on startup
+    if (isAndroid) {
+      setTimeout(() => {
+        const fn = PdfBridge.getFileName();
+        const sp = PdfBridge.loadPage();
+        if (fn) loadPdfFromBase64(fn, sp);
+      }, 300);
+    }
+
+    // ==================== File Loading ====================
+
+    fileBtn.addEventListener('click', () => fileInput.click());
+    document.getElementById('openBtn').addEventListener('click', () => fileInput.click());
+
+    fileInput.addEventListener('change', (e) => {
+      if (e.target.files[0]) loadFile(e.target.files[0]);
+    });
+
+    dropZone.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      dropZone.classList.add('drag-over');
+    });
+
+    dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+
+    dropZone.addEventListener('drop', (e) => {
+      e.preventDefault();
+      dropZone.classList.remove('drag-over');
+      const file = e.dataTransfer.files[0];
+      if (file && file.type === 'application/pdf') loadFile(file);
+    });
+
+    async function loadFile(file) {
+      loading.classList.add('active');
+      dropZone.classList.add('hidden');
+      fileNameEl.textContent = file.name;
+
+      try {
+        const arrayBuffer = await file.arrayBuffer();
+        const loadingTask = pdfjsLib.getDocument({
+          data: arrayBuffer,
+          disableAutoFetch: true,
+          disableStream: false,
+        });
+
+        pdfDoc = await loadingTask.promise;
+        totalPages = pdfDoc.numPages;
+        userScale = 1.0;
+        currentFileName = file.name;
+
+        // Restore last page from localStorage
+        const savedPage = localStorage.getItem('pdfviewer_page_' + currentFileName);
+        currentPage = savedPage ? Math.min(parseInt(savedPage), totalPages) || 1 : 1;
+
+        pageSlider.max = totalPages;
+        pageSlider.value = currentPage;
+
+        clearCache();
+        snapToSpreadStart();
+        updateViewModeBtn();
+
+        viewer.classList.add('active');
+        loading.classList.remove('active');
+
+        await renderCurrentPage();
+        showUI();
+      } catch (err) {
+        console.error('PDF load error:', err);
+        loading.classList.remove('active');
+        dropZone.classList.remove('hidden');
+        alert('PDF 파일을 로드할 수 없습니다.');
+      }
+    }
+
+    // ==================== Rendering ====================
+
+    async function renderPageToCanvas(pageNum) {
+      const page = await pdfDoc.getPage(pageNum);
+      const viewport0 = page.getViewport({ scale: 1 });
+      const dpr = window.devicePixelRatio || 1;
+
+      // Calculate fit scale based on display mode
+      const mode = getEffectiveMode();
+      const cw = container.clientWidth;
+      const ch = container.clientHeight;
+
+      let fitScale;
+      if (mode === 'dual') {
+        // For dual mode, each page gets half the width (minus gap)
+        const halfW = (cw - 8) / 2; // 4px gap on each side of divider
+        fitScale = Math.min(halfW / viewport0.width, ch / viewport0.height);
+      } else {
+        fitScale = Math.min(cw / viewport0.width, ch / viewport0.height);
+      }
+
+      const renderScale = fitScale * userScale;
+      const totalScale = renderScale * dpr;
+
+      const viewport = page.getViewport({ scale: totalScale });
+
+      const canvas = document.createElement('canvas');
+      canvas.width = viewport.width;
+      canvas.height = viewport.height;
+      const cssW = viewport.width / dpr;
+      const cssH = viewport.height / dpr;
+      canvas.style.width = cssW + 'px';
+      canvas.style.height = cssH + 'px';
+
+      const ctx = canvas.getContext('2d');
+      await page.render({ canvasContext: ctx, viewport }).promise;
+
+      return { canvas, cssWidth: cssW, cssHeight: cssH };
+    }
+
+    async function renderCurrentPage() {
+      if (rendering) {
+        pendingPage = currentPage;
+        return;
+      }
+
+      rendering = true;
+
+      try {
+        const displayPages = getDisplayPages();
+        const cacheKeyPrefix = `${viewMode}_${getEffectiveMode()}_${userScale}_`;
+
+        // Render all needed pages
+        const entries = [];
+        for (const pNum of displayPages) {
+          const cacheKey = cacheKeyPrefix + pNum;
+          let entry = pageCache.get(cacheKey);
+          if (!entry) {
+            entry = await renderPageToCanvas(pNum);
+            addToCache(cacheKey, entry);
+          }
+          entries.push({ pageNum: pNum, ...entry });
+        }
+
+        // Build display
+        container.innerHTML = '';
+
+        const explainIcon = `<svg viewBox="0 0 24 24"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 17h-2v-2h2v2zm2.07-7.75l-.9.92C13.45 12.9 13 13.5 13 15h-2v-.5c0-1.1.45-2.1 1.17-2.83l1.24-1.26c.37-.36.59-.86.59-1.41 0-1.1-.9-2-2-2s-2 .9-2 2H8c0-2.21 1.79-4 4-4s4 1.79 4 4c0 .88-.36 1.68-.93 2.25z"/></svg>`;
+
+        for (let i = 0; i < entries.length; i++) {
+          if (i === 1) {
+            // Divider between pages
+            const divider = document.createElement('div');
+            divider.className = 'page-divider';
+            container.appendChild(divider);
+          }
+
+          const wrapper = document.createElement('div');
+          wrapper.className = 'page-wrapper';
+          wrapper.appendChild(entries[i].canvas);
+
+          // Add explain button on each page
+          // Dual mode: left page (i=0) -> top-left, right page (i=1) -> top-right
+          // Single mode: top-right
+          const btn = document.createElement('button');
+          const isLeftPage = entries.length === 2 && i === 0;
+          btn.className = 'page-explain-btn visible' + (isLeftPage ? ' left-page' : '');
+          btn.innerHTML = explainIcon;
+          btn.title = `${entries[i].pageNum}p 해설`;
+          const pNum = entries[i].pageNum;
+          const isRightPage = entries.length === 2 && i === 1;
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            explainPageAction(pNum, isRightPage);
+          });
+          wrapper.appendChild(btn);
+
+          container.appendChild(wrapper);
+        }
+
+        // Update UI
+        updatePageUI(displayPages);
+
+        // Pre-render buffer
+        prerenderBuffer(displayPages, cacheKeyPrefix);
+      } catch (err) {
+        console.error('Render error:', err);
+      }
+
+      rendering = false;
+
+      if (pendingPage !== null) {
+        const next = pendingPage;
+        pendingPage = null;
+        currentPage = next;
+        renderCurrentPage();
+      }
+    }
+
+    function updatePageUI(displayPages) {
+      pageSlider.value = currentPage;
+      if (displayPages.length === 2) {
+        pageInfo.textContent = `${displayPages[0]}-${displayPages[1]} / ${totalPages}`;
+      } else {
+        pageInfo.textContent = `${displayPages[0]} / ${totalPages}`;
+      }
+
+      // Save current page
+      if (currentFileName) {
+        localStorage.setItem('pdfviewer_page_' + currentFileName, currentPage);
+        if (isAndroid) {
+          try { PdfBridge.savePage(currentPage, totalPages); } catch (e) { }
+        }
+      }
+    }
+
+    async function prerenderBuffer(displayPages, cacheKeyPrefix) {
+      const mode = getEffectiveMode();
+      const step = getPageStep();
+
+      // Determine pages to pre-render
+      const pagesToPrerender = [];
+      for (let offset = 1; offset <= BUFFER_PAGES; offset++) {
+        // Next spread
+        const nextStart = currentPage + step * offset;
+        if (mode === 'dual') {
+          if (nextStart >= 1 && nextStart <= totalPages) pagesToPrerender.push(nextStart);
+          if (nextStart + 1 >= 1 && nextStart + 1 <= totalPages) pagesToPrerender.push(nextStart + 1);
+        } else {
+          if (nextStart >= 1 && nextStart <= totalPages) pagesToPrerender.push(nextStart);
+        }
+        // Previous spread
+        const prevStart = currentPage - step * offset;
+        if (mode === 'dual') {
+          const pLeft = prevStart % 2 === 0 ? prevStart : prevStart - 1;
+          if (pLeft >= 1 && pLeft <= totalPages) pagesToPrerender.push(pLeft);
+          if (pLeft + 1 >= 1 && pLeft + 1 <= totalPages) pagesToPrerender.push(pLeft + 1);
+        } else {
+          if (prevStart >= 1 && prevStart <= totalPages) pagesToPrerender.push(prevStart);
+        }
+      }
+
+      for (const p of pagesToPrerender) {
+        const key = cacheKeyPrefix + p;
+        if (!pageCache.has(key)) {
+          try {
+            const entry = await renderPageToCanvas(p);
+            addToCache(key, entry);
+          } catch (e) { /* ignore */ }
+        }
+      }
+    }
+
+    function addToCache(key, entry) {
+      pageCache.set(key, entry);
+      if (pageCache.size > MAX_CACHE) {
+        const keys = [...pageCache.keys()];
+        let worstKey = keys[0];
+        let worstDist = 0;
+        for (const k of keys) {
+          const pNum = parseInt(k.split('_').pop());
+          const dist = Math.abs(pNum - currentPage);
+          if (dist > worstDist) {
+            worstDist = dist;
+            worstKey = k;
+          }
+        }
+        pageCache.delete(worstKey);
+      }
+    }
+
+    function clearCache() { pageCache.clear(); }
+    function invalidateCache() { pageCache.clear(); }
+
+    // ==================== Navigation ====================
+
+    function goToPage(num) {
+      const target = Math.max(1, Math.min(totalPages, num));
+      if (target !== currentPage) {
+        currentPage = target;
+        if (getEffectiveMode() === 'dual' && currentPage > 1) {
+          // Snap to even
+          if (currentPage % 2 !== 0) currentPage = Math.max(2, currentPage - 1);
+        }
+        renderCurrentPage();
+      }
+    }
+
+    function nextPage() {
+      const step = getPageStep();
+      const displayPages = getDisplayPages();
+      const lastDisplayed = displayPages[displayPages.length - 1];
+      if (lastDisplayed < totalPages) {
+        goToPage(lastDisplayed + 1);
+      }
+    }
+
+    function prevPage() {
+      const step = getPageStep();
+      if (currentPage <= 1) return;
+      if (getEffectiveMode() === 'dual') {
+        if (currentPage === 2 || currentPage === 3) {
+          goToPage(1);
+        } else {
+          goToPage(currentPage - 2);
+        }
+      } else {
+        goToPage(currentPage - 1);
+      }
+    }
+
+    document.getElementById('prevBtn').addEventListener('click', prevPage);
+    document.getElementById('nextBtn').addEventListener('click', nextPage);
+
+    pageSlider.addEventListener('input', () => {
+      const val = parseInt(pageSlider.value);
+      showToast(val);
+    });
+
+    pageSlider.addEventListener('change', () => {
+      goToPage(parseInt(pageSlider.value));
+      hideToast();
+    });
+
+    // ==================== Zoom ====================
+
+    function setZoom(scale) {
+      userScale = Math.max(0.25, Math.min(5.0, scale));
+      invalidateCache();
+      renderCurrentPage();
+      showZoomInfo();
+    }
+
+    document.getElementById('zoomInBtn').addEventListener('click', () => setZoom(userScale * 1.2));
+    document.getElementById('zoomOutBtn').addEventListener('click', () => setZoom(userScale / 1.2));
+    document.getElementById('fitBtn').addEventListener('click', () => setZoom(1.0));
+
+    // ==================== Fullscreen ====================
+
+    document.getElementById('fullscreenBtn').addEventListener('click', toggleFullscreen);
+
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(() => { });
+      } else {
+        document.exitFullscreen().catch(() => { });
+      }
+    }
+
+    // ==================== Keyboard ====================
+
+    document.addEventListener('keydown', (e) => {
+      if (!pdfDoc) return;
+
+      switch (e.key) {
+        case 'ArrowLeft':
+        case 'ArrowUp':
+        case 'PageUp':
+          e.preventDefault();
+          prevPage();
+          break;
+        case 'ArrowRight':
+        case 'ArrowDown':
+        case 'PageDown':
+        case ' ':
+          e.preventDefault();
+          nextPage();
+          break;
+        case 'Home':
+          e.preventDefault();
+          goToPage(1);
+          break;
+        case 'End':
+          e.preventDefault();
+          goToPage(totalPages);
+          break;
+        case '+':
+        case '=':
+          e.preventDefault();
+          setZoom(userScale * 1.2);
+          break;
+        case '-':
+          e.preventDefault();
+          setZoom(userScale / 1.2);
+          break;
+        case '0':
+          e.preventDefault();
+          setZoom(1.0);
+          break;
+        case 'f':
+        case 'F':
+          e.preventDefault();
+          toggleFullscreen();
+          break;
+        case 'd':
+        case 'D':
+          e.preventDefault();
+          cycleViewMode();
+          break;
+      }
+    });
+
+    // ==================== Touch / Swipe ====================
+
+    let touchStartX = 0;
+    let touchStartY = 0;
+    let touchStartDist = 0;
+    let isSwiping = false;
+
+    container.addEventListener('touchstart', (e) => {
+      if (e.touches.length === 1) {
+        touchStartX = e.touches[0].clientX;
+        touchStartY = e.touches[0].clientY;
+        isSwiping = true;
+      } else if (e.touches.length === 2) {
+        isSwiping = false;
+        touchStartDist = getTouchDist(e.touches);
+      }
+    }, { passive: true });
+
+    container.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2 && touchStartDist > 0) {
+        e.preventDefault();
+        const dist = getTouchDist(e.touches);
+        const ratio = dist / touchStartDist;
+        if (Math.abs(ratio - 1) > 0.05) {
+          setZoom(userScale * ratio);
+          touchStartDist = dist;
+        }
+      }
+    }, { passive: false });
+
+    container.addEventListener('touchend', (e) => {
+      if (isSwiping && e.changedTouches.length === 1) {
+        const dx = e.changedTouches[0].clientX - touchStartX;
+        const dy = e.changedTouches[0].clientY - touchStartY;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+
+        if (absDx > 50 && absDx > absDy * 1.5) {
+          if (dx > 0) prevPage();
+          else nextPage();
+        }
+      }
+      isSwiping = false;
+      touchStartDist = 0;
+    }, { passive: true });
+
+    function getTouchDist(touches) {
+      const dx = touches[0].clientX - touches[1].clientX;
+      const dy = touches[0].clientY - touches[1].clientY;
+      return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    // Click on container to toggle UI
+    container.addEventListener('click', (e) => {
+      // Don't toggle UI if clicking an explain button
+      if (e.target.closest('.page-explain-btn')) return;
+      toggleUI();
+    });
+
+    // ==================== UI Visibility ====================
+
+    function showUI() {
+      topBar.classList.remove('hidden');
+      bottomBar.classList.remove('hidden');
+      clearTimeout(uiTimeout);
+      uiTimeout = setTimeout(hideUI, 3000);
+    }
+
+    function hideUI() {
+      topBar.classList.add('hidden');
+      bottomBar.classList.add('hidden');
+    }
+
+    function toggleUI() {
+      if (topBar.classList.contains('hidden')) showUI();
+      else hideUI();
+    }
+
+    // Show UI only when mouse enters the top/bottom edge zones (48px)
+    topBar.addEventListener('mouseenter', () => clearTimeout(uiTimeout));
+    topBar.addEventListener('mouseleave', () => { uiTimeout = setTimeout(hideUI, 2000); });
+    bottomBar.addEventListener('mouseenter', () => clearTimeout(uiTimeout));
+    bottomBar.addEventListener('mouseleave', () => { uiTimeout = setTimeout(hideUI, 2000); });
+
+    document.addEventListener('mousemove', (e) => {
+      if (!pdfDoc) return;
+      // Only show UI when mouse is near the top or bottom edge
+      const y = e.clientY;
+      const h = window.innerHeight;
+      if (y <= 60 || y >= h - 60) {
+        showUI();
+      }
+    });
+
+    // ==================== Toast / Zoom Info ====================
+
+    function showToast(pageNum) {
+      pageToast.textContent = pageNum;
+      pageToast.classList.add('visible');
+      clearTimeout(toastTimeout);
+    }
+
+    function hideToast() {
+      clearTimeout(toastTimeout);
+      toastTimeout = setTimeout(() => pageToast.classList.remove('visible'), 300);
+    }
+
+    function showZoomInfo() {
+      const pct = Math.round(userScale * 100);
+      zoomInfoEl.textContent = `${pct}%`;
+      zoomInfoEl.classList.add('visible');
+      clearTimeout(zoomTimeout);
+      zoomTimeout = setTimeout(() => zoomInfoEl.classList.remove('visible'), 1000);
+    }
+
+    // ==================== Resize / Orientation ====================
+
+    let resizeTimer = null;
+    let lastEffectiveMode = null;
+
+    function onResize() {
+      clearTimeout(resizeTimer);
+      resizeTimer = setTimeout(() => {
+        if (!pdfDoc) return;
+
+        const newMode = getEffectiveMode();
+        if (newMode !== lastEffectiveMode) {
+          // Mode changed due to resize/rotation
+          lastEffectiveMode = newMode;
+          snapToSpreadStart();
+          updateViewModeBtn();
+        }
+        invalidateCache();
+        renderCurrentPage();
+      }, 150);
+    }
+
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+
+    // ==================== Mouse wheel zoom ====================
+
+    container.addEventListener('wheel', (e) => {
+      if (e.ctrlKey) {
+        e.preventDefault();
+        const delta = e.deltaY > 0 ? 0.9 : 1.1;
+        setZoom(userScale * delta);
+      }
+    }, { passive: false });
+
+    // ==================== Explain (Gemini API) ====================
+
+    const GEMINI_API_KEY = isAndroid ? (function () { try { return PdfBridge.getApiKey(); } catch (e) { return ''; } })() : 'AIzaSyB5ZGyzyLxCAXcH8J1nAJcjSqN5Sfm2_2w';
+    const GEMINI_API_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-lite:generateContent?key=${GEMINI_API_KEY}`;
+
+    const explainOverlay = document.getElementById('explainOverlay');
+    const explainBody = document.getElementById('explainBody');
+    const explainTitle = document.getElementById('explainTitle');
+    const explainClose = document.getElementById('explainClose');
+    const explainOverlayBg = document.getElementById('explainOverlayBg');
+
+    // Cache: "fileName_pageNum" -> html result
+    const explainCache = new Map();
+
+    explainClose.addEventListener('click', closeExplain);
+    explainOverlayBg.addEventListener('click', closeExplain);
+
+    function closeExplain() {
+      try { window.speechSynthesis.cancel(); } catch (e) { }
+      if (isAndroid) { try { PdfBridge.stopSpeaking(); } catch (e) { } }
+      if (speakingEl) {
+        speakingEl.classList.remove('speaking');
+        speakingEl = null;
+      }
+      explainOverlay.classList.remove('active');
+      explainOverlay.classList.remove('left-side');
+    }
+
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && explainOverlay.classList.contains('active')) {
+        e.preventDefault();
+        closeExplain();
+        return;
+      }
+      if (!pdfDoc) return;
+      if (e.key === 'e' || e.key === 'E') {
+        if (explainOverlay.classList.contains('active')) return;
+        e.preventDefault();
+        explainPageAction(currentPage);
+      }
+    });
+
+    async function explainPageAction(pageNum, isRightPage = false) {
+      const cacheKey = `${currentFileName}_${pageNum}`;
+
+      // In dual mode, right page explain opens on the left side
+      if (isRightPage) {
+        explainOverlay.classList.add('left-side');
+      } else {
+        explainOverlay.classList.remove('left-side');
+      }
+
+      explainTitle.textContent = `페이지 ${pageNum} 해설`;
+      explainOverlay.classList.add('active');
+
+      // Check cache
+      if (explainCache.has(cacheKey)) {
+        explainBody.innerHTML = explainCache.get(cacheKey);
+        return;
+      }
+
+      // Show loading
+      explainBody.innerHTML = `
     <div class="explain-loading">
       <div class="spinner"></div>
       <span>Gemini가 페이지를 분석 중...</span>
     </div>`;
 
-  try {
-    // Render page to a canvas for capture
-    const page = await pdfDoc.getPage(pageNum);
-    const viewport0 = page.getViewport({ scale: 1 });
-    // Render at a reasonable resolution for API (max ~1500px wide)
-    const captureScale = Math.min(1500 / viewport0.width, 2000 / viewport0.height, 2.0);
-    const viewport = page.getViewport({ scale: captureScale });
+      try {
+        // Render page to a canvas for capture
+        const page = await pdfDoc.getPage(pageNum);
+        const viewport0 = page.getViewport({ scale: 1 });
+        // Render at a reasonable resolution for API (max ~1500px wide)
+        const captureScale = Math.min(1500 / viewport0.width, 2000 / viewport0.height, 2.0);
+        const viewport = page.getViewport({ scale: captureScale });
 
-    const captureCanvas = document.createElement('canvas');
-    captureCanvas.width = viewport.width;
-    captureCanvas.height = viewport.height;
-    const ctx = captureCanvas.getContext('2d');
-    await page.render({ canvasContext: ctx, viewport }).promise;
+        const captureCanvas = document.createElement('canvas');
+        captureCanvas.width = viewport.width;
+        captureCanvas.height = viewport.height;
+        const ctx = captureCanvas.getContext('2d');
+        await page.render({ canvasContext: ctx, viewport }).promise;
 
-    // Convert to base64 JPEG (smaller than PNG)
-    const base64Data = captureCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
+        // Convert to base64 JPEG (smaller than PNG)
+        const base64Data = captureCanvas.toDataURL('image/jpeg', 0.85).split(',')[1];
 
-    // Call Gemini API
-    const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [
-            {
-              inlineData: {
-                mimeType: 'image/jpeg',
-                data: base64Data
-              }
-            },
-            {
-              text: `이 이미지는 영어 책의 한 페이지입니다. 다음 형식으로 분석해주세요:
+        // Call Gemini API
+        const response = await fetch(GEMINI_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: 'image/jpeg',
+                    data: base64Data
+                  }
+                },
+                {
+                  text: `이 이미지는 영어 책의 한 페이지입니다. 다음 형식으로 분석해주세요:
 
 1. 페이지에 있는 주요 영어 문장들을 찾아주세요.
 2. 각 문장에 대해 다음을 제공해주세요:
@@ -1674,284 +1848,284 @@ async function explainPageAction(pageNum, isRightPage = false) {
 
 만약 이미지에 텍스트가 거의 없거나 삽화 위주라면, 그림에 대한 설명과 관련 영어 표현을 알려주세요.
 중요: 반드시 HTML 태그만 사용하고, 마크다운은 사용하지 마세요. commentary 안의 주요 영어 단어/표현은 꼭 <span class="vocab-word">로 감싸주세요.`
+                }
+              ]
+            }],
+            generationConfig: {
+              temperature: 0.3,
+              maxOutputTokens: 4096
             }
-          ]
-        }],
-        generationConfig: {
-          temperature: 0.3,
-          maxOutputTokens: 4096
+          })
+        });
+
+        if (!response.ok) {
+          const errData = await response.json().catch(() => ({}));
+          throw new Error(errData.error?.message || `API 오류 (${response.status})`);
         }
-      })
-    });
 
-    if (!response.ok) {
-      const errData = await response.json().catch(() => ({}));
-      throw new Error(errData.error?.message || `API 오류 (${response.status})`);
-    }
+        const data = await response.json();
+        const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
 
-    const data = await response.json();
-    const text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+        // Clean up: remove markdown code fences if any
+        let html = text
+          .replace(/```html\s*/gi, '')
+          .replace(/```\s*/g, '')
+          .trim();
 
-    // Clean up: remove markdown code fences if any
-    let html = text
-      .replace(/```html\s*/gi, '')
-      .replace(/```\s*/g, '')
-      .trim();
+        // If response doesn't contain our expected tags, wrap in a basic format
+        if (!html.includes('class="en-sentence"') && !html.includes('<h4>')) {
+          html = `<div class="commentary">${html.replace(/\n/g, '<br>')}</div>`;
+        }
 
-    // If response doesn't contain our expected tags, wrap in a basic format
-    if (!html.includes('class="en-sentence"') && !html.includes('<h4>')) {
-      html = `<div class="commentary">${html.replace(/\n/g, '<br>')}</div>`;
-    }
+        explainBody.innerHTML = html;
+        explainCache.set(cacheKey, html);
 
-    explainBody.innerHTML = html;
-    explainCache.set(cacheKey, html);
-
-  } catch (err) {
-    console.error('Gemini API error:', err);
-    explainBody.innerHTML = `
+      } catch (err) {
+        console.error('Gemini API error:', err);
+        explainBody.innerHTML = `
       <div class="explain-error">
         <p>해설을 가져올 수 없습니다.</p>
         <p style="font-size:13px;margin-top:8px;opacity:0.7;">${err.message}</p>
       </div>`;
-  }
-}
-
-// ==================== TTS (Web Speech API) ====================
-
-const ttsSettingsBtn = document.getElementById('ttsSettingsBtn');
-const ttsDropdown = document.getElementById('ttsDropdown');
-const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
-const ttsRateSlider = document.getElementById('ttsRateSlider');
-const ttsRateVal = document.getElementById('ttsRateVal');
-const ttsVoiceName = document.getElementById('ttsVoiceName');
-const ttsTestBtn = document.getElementById('ttsTestBtn');
-
-let currentUtterance = null;
-let speakingEl = null;
-let ttsRate = parseFloat(localStorage.getItem('pdfviewer_tts_rate') || '0.9');
-let ttsVoiceURI = localStorage.getItem('pdfviewer_tts_voice') || '';
-let allEnVoices = [];
-
-ttsRateSlider.value = ttsRate;
-ttsRateVal.textContent = ttsRate.toFixed(1) + 'x';
-
-// Settings dropdown toggle
-ttsSettingsBtn.addEventListener('click', (e) => {
-  e.stopPropagation();
-  ttsDropdown.classList.toggle('open');
-});
-
-// Close dropdown on outside click
-document.addEventListener('click', (e) => {
-  if (!ttsDropdown.contains(e.target) && e.target !== ttsSettingsBtn) {
-    ttsDropdown.classList.remove('open');
-  }
-});
-
-// Keep dropdown open when interacting
-ttsDropdown.addEventListener('click', (e) => e.stopPropagation());
-
-// Prevent dropdown from triggering UI hide
-ttsDropdown.addEventListener('mouseenter', () => clearTimeout(uiTimeout));
-
-// Rate slider
-ttsRateSlider.addEventListener('input', () => {
-  ttsRate = parseFloat(ttsRateSlider.value);
-  ttsRateVal.textContent = ttsRate.toFixed(1) + 'x';
-  localStorage.setItem('pdfviewer_tts_rate', ttsRate);
-});
-
-// Voice select
-ttsVoiceSelect.addEventListener('change', () => {
-  ttsVoiceURI = ttsVoiceSelect.value;
-  const opt = ttsVoiceSelect.selectedOptions[0];
-  ttsVoiceName.textContent = opt ? opt.textContent.split('(')[0].trim().slice(0, 12) : '기본';
-  localStorage.setItem('pdfviewer_tts_voice', ttsVoiceURI);
-});
-
-// Populate voice list
-function populateVoices() {
-  const voices = window.speechSynthesis.getVoices();
-  allEnVoices = voices.filter(v => v.lang.startsWith('en'));
-  if (allEnVoices.length === 0) return;
-
-  ttsVoiceSelect.innerHTML = '';
-  allEnVoices.forEach(v => {
-    const opt = document.createElement('option');
-    opt.value = v.voiceURI;
-    const label = v.name.replace(/Microsoft |Google /, '');
-    opt.textContent = `${label} (${v.lang})`;
-    if (v.voiceURI === ttsVoiceURI) opt.selected = true;
-    ttsVoiceSelect.appendChild(opt);
-  });
-
-  // If no saved voice, select first and save
-  if (!ttsVoiceURI || !allEnVoices.find(v => v.voiceURI === ttsVoiceURI)) {
-    const best = allEnVoices.find(v => v.name.includes('Google') && v.lang === 'en-US')
-      || allEnVoices.find(v => v.lang === 'en-US')
-      || allEnVoices[0];
-    if (best) {
-      ttsVoiceURI = best.voiceURI;
-      ttsVoiceSelect.value = ttsVoiceURI;
-      localStorage.setItem('pdfviewer_tts_voice', ttsVoiceURI);
+      }
     }
-  }
 
-  const sel = ttsVoiceSelect.selectedOptions[0];
-  ttsVoiceName.textContent = sel ? sel.textContent.split('(')[0].trim().slice(0, 12) : '기본';
-}
+    // ==================== TTS (Web Speech API) ====================
 
-try {
-  window.speechSynthesis.getVoices();
-  window.speechSynthesis.onvoiceschanged = populateVoices;
-  populateVoices();
-} catch(e) { /* speechSynthesis not available */ }
+    const ttsSettingsBtn = document.getElementById('ttsSettingsBtn');
+    const ttsDropdown = document.getElementById('ttsDropdown');
+    const ttsVoiceSelect = document.getElementById('ttsVoiceSelect');
+    const ttsRateSlider = document.getElementById('ttsRateSlider');
+    const ttsRateVal = document.getElementById('ttsRateVal');
+    const ttsVoiceName = document.getElementById('ttsVoiceName');
+    const ttsTestBtn = document.getElementById('ttsTestBtn');
 
-// Test button
-ttsTestBtn.addEventListener('click', () => {
-  speakEnglish('Hello! This is a test of the text to speech voice.', null);
-});
+    let currentUtterance = null;
+    let speakingEl = null;
+    let ttsRate = parseFloat(localStorage.getItem('pdfviewer_tts_rate') || '0.9');
+    let ttsVoiceURI = localStorage.getItem('pdfviewer_tts_voice') || '';
+    let allEnVoices = [];
 
-// Get selected voice object
-function getSelectedVoice() {
-  const voices = window.speechSynthesis.getVoices();
-  return voices.find(v => v.voiceURI === ttsVoiceURI) || null;
-}
+    ttsRateSlider.value = ttsRate;
+    ttsRateVal.textContent = ttsRate.toFixed(1) + 'x';
 
-function speakEnglish(text, el) {
-  try { window.speechSynthesis.cancel(); } catch(e) {}
+    // Settings dropdown toggle
+    ttsSettingsBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      ttsDropdown.classList.toggle('open');
+    });
 
-  if (speakingEl === el && el !== null) {
-    clearSpeaking();
-    if (isAndroid) { try { PdfBridge.stopSpeaking(); } catch(e) {} }
-    return;
-  }
+    // Close dropdown on outside click
+    document.addEventListener('click', (e) => {
+      if (!ttsDropdown.contains(e.target) && e.target !== ttsSettingsBtn) {
+        ttsDropdown.classList.remove('open');
+      }
+    });
 
-  clearSpeaking();
+    // Keep dropdown open when interacting
+    ttsDropdown.addEventListener('click', (e) => e.stopPropagation());
 
-  if (el) {
-    speakingEl = el;
-    el.classList.add('speaking');
-  }
+    // Prevent dropdown from triggering UI hide
+    ttsDropdown.addEventListener('mouseenter', () => clearTimeout(uiTimeout));
 
-  // Use Android native TTS if available
-  if (isAndroid) {
+    // Rate slider
+    ttsRateSlider.addEventListener('input', () => {
+      ttsRate = parseFloat(ttsRateSlider.value);
+      ttsRateVal.textContent = ttsRate.toFixed(1) + 'x';
+      localStorage.setItem('pdfviewer_tts_rate', ttsRate);
+    });
+
+    // Voice select
+    ttsVoiceSelect.addEventListener('change', () => {
+      ttsVoiceURI = ttsVoiceSelect.value;
+      const opt = ttsVoiceSelect.selectedOptions[0];
+      ttsVoiceName.textContent = opt ? opt.textContent.split('(')[0].trim().slice(0, 12) : '기본';
+      localStorage.setItem('pdfviewer_tts_voice', ttsVoiceURI);
+    });
+
+    // Populate voice list
+    function populateVoices() {
+      const voices = window.speechSynthesis.getVoices();
+      allEnVoices = voices.filter(v => v.lang.startsWith('en'));
+      if (allEnVoices.length === 0) return;
+
+      ttsVoiceSelect.innerHTML = '';
+      allEnVoices.forEach(v => {
+        const opt = document.createElement('option');
+        opt.value = v.voiceURI;
+        const label = v.name.replace(/Microsoft |Google /, '');
+        opt.textContent = `${label} (${v.lang})`;
+        if (v.voiceURI === ttsVoiceURI) opt.selected = true;
+        ttsVoiceSelect.appendChild(opt);
+      });
+
+      // If no saved voice, select first and save
+      if (!ttsVoiceURI || !allEnVoices.find(v => v.voiceURI === ttsVoiceURI)) {
+        const best = allEnVoices.find(v => v.name.includes('Google') && v.lang === 'en-US')
+          || allEnVoices.find(v => v.lang === 'en-US')
+          || allEnVoices[0];
+        if (best) {
+          ttsVoiceURI = best.voiceURI;
+          ttsVoiceSelect.value = ttsVoiceURI;
+          localStorage.setItem('pdfviewer_tts_voice', ttsVoiceURI);
+        }
+      }
+
+      const sel = ttsVoiceSelect.selectedOptions[0];
+      ttsVoiceName.textContent = sel ? sel.textContent.split('(')[0].trim().slice(0, 12) : '기본';
+    }
+
     try {
-      PdfBridge.speak(text, ttsRate);
-      // Auto-clear speaking state after estimated duration
-      const words = text.split(/\s+/).length;
-      const estimatedMs = (words / (2.5 * ttsRate)) * 1000 + 500;
-      setTimeout(() => clearSpeaking(), Math.max(estimatedMs, 1500));
-      return;
-    } catch(e) { /* fallback to Web Speech */ }
-  }
+      window.speechSynthesis.getVoices();
+      window.speechSynthesis.onvoiceschanged = populateVoices;
+      populateVoices();
+    } catch (e) { /* speechSynthesis not available */ }
 
-  const utterance = new SpeechSynthesisUtterance(text);
-  utterance.lang = 'en-US';
-  utterance.rate = ttsRate;
+    // Test button
+    ttsTestBtn.addEventListener('click', () => {
+      speakEnglish('Hello! This is a test of the text to speech voice.', null);
+    });
 
-  const voice = getSelectedVoice();
-  if (voice) utterance.voice = voice;
+    // Get selected voice object
+    function getSelectedVoice() {
+      const voices = window.speechSynthesis.getVoices();
+      return voices.find(v => v.voiceURI === ttsVoiceURI) || null;
+    }
 
-  currentUtterance = utterance;
+    function speakEnglish(text, el) {
+      try { window.speechSynthesis.cancel(); } catch (e) { }
 
-  utterance.onend = () => clearSpeaking();
-  utterance.onerror = () => clearSpeaking();
+      if (speakingEl === el && el !== null) {
+        clearSpeaking();
+        if (isAndroid) { try { PdfBridge.stopSpeaking(); } catch (e) { } }
+        return;
+      }
 
-  window.speechSynthesis.speak(utterance);
-}
+      clearSpeaking();
 
-function clearSpeaking() {
-  if (speakingEl) {
-    speakingEl.classList.remove('speaking');
-    speakingEl = null;
-  }
-  currentUtterance = null;
-}
+      if (el) {
+        speakingEl = el;
+        el.classList.add('speaking');
+      }
 
-// Event delegation: click on .en-sentence to speak, click on .vocab-word for examples
-explainBody.addEventListener('click', (e) => {
-  // Vocab word click
-  const vocabEl = e.target.closest('.vocab-word');
-  if (vocabEl) {
-    e.stopPropagation();
-    handleVocabClick(vocabEl);
-    return;
-  }
+      // Use Android native TTS if available
+      if (isAndroid) {
+        try {
+          PdfBridge.speak(text, ttsRate);
+          // Auto-clear speaking state after estimated duration
+          const words = text.split(/\s+/).length;
+          const estimatedMs = (words / (2.5 * ttsRate)) * 1000 + 500;
+          setTimeout(() => clearSpeaking(), Math.max(estimatedMs, 1500));
+          return;
+        } catch (e) { /* fallback to Web Speech */ }
+      }
 
-  // Example sentence TTS
-  const exEnEl = e.target.closest('.ex-en');
-  if (exEnEl) {
-    e.stopPropagation();
-    const text = exEnEl.textContent.trim();
-    if (text) speakEnglish(text, exEnEl);
-    return;
-  }
+      const utterance = new SpeechSynthesisUtterance(text);
+      utterance.lang = 'en-US';
+      utterance.rate = ttsRate;
 
-  // Close examples button
-  const closeBtn = e.target.closest('.word-examples-close');
-  if (closeBtn) {
-    const panel = closeBtn.closest('.word-examples');
-    if (panel) panel.remove();
-    return;
-  }
+      const voice = getSelectedVoice();
+      if (voice) utterance.voice = voice;
 
-  // Sentence TTS
-  const sentenceEl = e.target.closest('.en-sentence');
-  if (!sentenceEl) return;
-  const text = sentenceEl.textContent.trim();
-  if (text) speakEnglish(text, sentenceEl);
-});
+      currentUtterance = utterance;
 
-// ==================== Vocab Word Examples ====================
+      utterance.onend = () => clearSpeaking();
+      utterance.onerror = () => clearSpeaking();
 
-const vocabExampleCache = new Map();
+      window.speechSynthesis.speak(utterance);
+    }
 
-async function handleVocabClick(el) {
-  const word = el.textContent.trim();
-  if (!word) return;
+    function clearSpeaking() {
+      if (speakingEl) {
+        speakingEl.classList.remove('speaking');
+        speakingEl = null;
+      }
+      currentUtterance = null;
+    }
 
-  // Toggle: if this word already has a panel open, close it
-  if (el._examplePanel && el._examplePanel.parentElement) {
-    el._examplePanel.remove();
-    el._examplePanel = null;
-    return;
-  }
+    // Event delegation: click on .en-sentence to speak, click on .vocab-word for examples
+    explainBody.addEventListener('click', (e) => {
+      // Vocab word click
+      const vocabEl = e.target.closest('.vocab-word');
+      if (vocabEl) {
+        e.stopPropagation();
+        handleVocabClick(vocabEl);
+        return;
+      }
 
-  // Create example panel right after the commentary div
-  const commentary = el.closest('.commentary');
-  if (!commentary) return;
+      // Example sentence TTS
+      const exEnEl = e.target.closest('.ex-en');
+      if (exEnEl) {
+        e.stopPropagation();
+        const text = exEnEl.textContent.trim();
+        if (text) speakEnglish(text, exEnEl);
+        return;
+      }
 
-  const panel = document.createElement('div');
-  panel.className = 'word-examples';
+      // Close examples button
+      const closeBtn = e.target.closest('.word-examples-close');
+      if (closeBtn) {
+        const panel = closeBtn.closest('.word-examples');
+        if (panel) panel.remove();
+        return;
+      }
 
-  // Check cache
-  const cacheKey = word.toLowerCase();
-  el._examplePanel = panel;
+      // Sentence TTS
+      const sentenceEl = e.target.closest('.en-sentence');
+      if (!sentenceEl) return;
+      const text = sentenceEl.textContent.trim();
+      if (text) speakEnglish(text, sentenceEl);
+    });
 
-  if (vocabExampleCache.has(cacheKey)) {
-    panel.innerHTML = buildExamplesHTML(word, vocabExampleCache.get(cacheKey));
-    commentary.after(panel);
-    return;
-  }
+    // ==================== Vocab Word Examples ====================
 
-  // Show loading
-  panel.innerHTML = `
+    const vocabExampleCache = new Map();
+
+    async function handleVocabClick(el) {
+      const word = el.textContent.trim();
+      if (!word) return;
+
+      // Toggle: if this word already has a panel open, close it
+      if (el._examplePanel && el._examplePanel.parentElement) {
+        el._examplePanel.remove();
+        el._examplePanel = null;
+        return;
+      }
+
+      // Create example panel right after the commentary div
+      const commentary = el.closest('.commentary');
+      if (!commentary) return;
+
+      const panel = document.createElement('div');
+      panel.className = 'word-examples';
+
+      // Check cache
+      const cacheKey = word.toLowerCase();
+      el._examplePanel = panel;
+
+      if (vocabExampleCache.has(cacheKey)) {
+        panel.innerHTML = buildExamplesHTML(word, vocabExampleCache.get(cacheKey));
+        commentary.after(panel);
+        return;
+      }
+
+      // Show loading
+      panel.innerHTML = `
     <div class="word-examples-header">
       <span class="word-examples-title">"${word}" 예문</span>
       <button class="word-examples-close">&times;</button>
     </div>
     <div class="ex-loading"><div class="mini-spinner"></div>예문 생성 중...</div>`;
-  commentary.after(panel);
+      commentary.after(panel);
 
-  try {
-    const response = await fetch(GEMINI_API_URL, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{
-          parts: [{
-            text: `영어 단어/표현 "${word}"에 대해 실용적인 예문 4개를 만들어주세요.
+      try {
+        const response = await fetch(GEMINI_API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            contents: [{
+              parts: [{
+                text: `영어 단어/표현 "${word}"에 대해 실용적인 예문 4개를 만들어주세요.
 
 JSON 배열로만 응답하세요. 다른 텍스트 없이 JSON만:
 [
@@ -1962,49 +2136,50 @@ JSON 배열로만 응답하세요. 다른 텍스트 없이 JSON만:
 ]
 
 예문은 일상적이고 자연스러운 문장으로, 난이도를 다양하게 해주세요.`
-          }]
-        }],
-        generationConfig: {
-          temperature: 0.7,
-          maxOutputTokens: 1024
-        }
-      })
-    });
+              }]
+            }],
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: 1024
+            }
+          })
+        });
 
-    if (!response.ok) throw new Error(`API 오류 (${response.status})`);
+        if (!response.ok) throw new Error(`API 오류 (${response.status})`);
 
-    const data = await response.json();
-    let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
-    raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
-    const examples = JSON.parse(raw);
+        const data = await response.json();
+        let raw = data.candidates?.[0]?.content?.parts?.[0]?.text || '[]';
+        raw = raw.replace(/```json\s*/gi, '').replace(/```\s*/g, '').trim();
+        const examples = JSON.parse(raw);
 
-    vocabExampleCache.set(cacheKey, examples);
-    panel.innerHTML = buildExamplesHTML(word, examples);
+        vocabExampleCache.set(cacheKey, examples);
+        panel.innerHTML = buildExamplesHTML(word, examples);
 
-  } catch (err) {
-    console.error('Vocab example error:', err);
-    panel.innerHTML = `
+      } catch (err) {
+        console.error('Vocab example error:', err);
+        panel.innerHTML = `
       <div class="word-examples-header">
         <span class="word-examples-title">"${word}" 예문</span>
         <button class="word-examples-close">&times;</button>
       </div>
       <div style="color:#e66;font-size:12px;">예문을 가져올 수 없습니다.</div>`;
-  }
-}
+      }
+    }
 
-function buildExamplesHTML(word, examples) {
-  let html = `
+    function buildExamplesHTML(word, examples) {
+      let html = `
     <div class="word-examples-header">
       <span class="word-examples-title">"${word}" 예문</span>
       <button class="word-examples-close">&times;</button>
     </div>`;
-  for (const ex of examples) {
-    html += `<div class="ex-en">${ex.en}</div><div class="ex-ko">${ex.ko}</div>`;
-  }
-  return html;
-}
+      for (const ex of examples) {
+        html += `<div class="ex-en">${ex.en}</div><div class="ex-ko">${ex.ko}</div>`;
+      }
+      return html;
+    }
 
 
-</script>
+  </script>
 </body>
+
 </html>

@@ -1,9 +1,11 @@
 package com.example.cdplayer.ui.screens.books
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -13,9 +15,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Favorite
+import androidx.compose.material.icons.filled.FavoriteBorder
 import androidx.compose.material.icons.filled.MenuBook
 import androidx.compose.material.icons.filled.PictureAsPdf
 import androidx.compose.material.icons.filled.Refresh
@@ -35,10 +41,15 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import coil.compose.AsyncImage
+import java.io.File
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -50,6 +61,7 @@ fun BooksScreen(
     viewModel: BooksViewModel = hiltViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
+    val pdfFavorites by viewModel.pdfFavorites.collectAsState()
 
     Scaffold(
         topBar = {
@@ -130,9 +142,34 @@ fun BooksScreen(
 
                     LazyColumn(
                         modifier = Modifier.fillMaxSize(),
-                        contentPadding = androidx.compose.foundation.layout.PaddingValues(16.dp),
+                        contentPadding = PaddingValues(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
+                        // Favorites Section (horizontal scroll)
+                        if (pdfFavorites.isNotEmpty()) {
+                            item {
+                                Text(
+                                    text = "즐겨찾기",
+                                    style = MaterialTheme.typography.titleSmall,
+                                    fontWeight = FontWeight.Bold,
+                                    modifier = Modifier.padding(bottom = 8.dp)
+                                )
+                            }
+                            item {
+                                LazyRow(
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    modifier = Modifier.padding(bottom = 16.dp)
+                                ) {
+                                    items(pdfFavorites, key = { it.filePath }) { book ->
+                                        FavoriteBookCard(
+                                            book = book,
+                                            onClick = { onNavigateToPdfViewer(book.filePath) }
+                                        )
+                                    }
+                                }
+                            }
+                        }
+
                         if (recentlyRead.isNotEmpty()) {
                             item {
                                 Text(
@@ -146,7 +183,8 @@ fun BooksScreen(
                                 PdfFileItem(
                                     file = file,
                                     onClick = { onNavigateToPdfViewer(file.filePath) },
-                                    onDelete = { viewModel.deleteBook(file.filePath) }
+                                    onDelete = { viewModel.deleteBook(file.filePath) },
+                                    onFavorite = { viewModel.toggleFavorite(file.filePath, file.fileName) }
                                 )
                             }
                         }
@@ -167,7 +205,8 @@ fun BooksScreen(
                                 PdfFileItem(
                                     file = file,
                                     onClick = { onNavigateToPdfViewer(file.filePath) },
-                                    onDelete = null
+                                    onDelete = null,
+                                    onFavorite = { viewModel.toggleFavorite(file.filePath, file.fileName) }
                                 )
                             }
                         }
@@ -182,7 +221,8 @@ fun BooksScreen(
 private fun PdfFileItem(
     file: PdfFileInfo,
     onClick: () -> Unit,
-    onDelete: (() -> Unit)?
+    onDelete: (() -> Unit)?,
+    onFavorite: () -> Unit
 ) {
     Card(
         modifier = Modifier
@@ -267,6 +307,15 @@ private fun PdfFileItem(
                     )
                 }
             }
+
+            IconButton(onClick = onFavorite) {
+                Icon(
+                    imageVector = if (file.isFavorite) Icons.Default.Favorite else Icons.Default.FavoriteBorder,
+                    contentDescription = "즐겨찾기",
+                    tint = if (file.isFavorite) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                    modifier = Modifier.size(20.dp)
+                )
+            }
         }
     }
 }
@@ -294,3 +343,62 @@ private fun formatRelativeTime(timestamp: Long): String {
         else -> SimpleDateFormat("M/d", Locale.getDefault()).format(Date(timestamp))
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FavoriteBookCard(
+    book: com.example.cdplayer.data.local.entity.PdfBookEntity,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.width(120.dp),
+        shape = RoundedCornerShape(12.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        )
+    ) {
+        Column(
+            modifier = Modifier.padding(8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally
+        ) {
+            // Cover Image
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(140.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(MaterialTheme.colorScheme.surface),
+                contentAlignment = Alignment.Center
+            ) {
+                if (book.coverPath != null && File(book.coverPath).exists()) {
+                    AsyncImage(
+                        model = File(book.coverPath),
+                        contentDescription = book.fileName,
+                        modifier = Modifier.fillMaxSize(),
+                        contentScale = ContentScale.Crop
+                    )
+                } else {
+                    Icon(
+                        imageVector = Icons.Default.PictureAsPdf,
+                        contentDescription = null,
+                        modifier = Modifier.size(40.dp),
+                        tint = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            Text(
+                text = book.fileName,
+                style = MaterialTheme.typography.bodySmall,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        }
+    }
+}
+

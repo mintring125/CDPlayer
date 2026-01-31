@@ -111,6 +111,38 @@ class PdfViewerViewModel @Inject constructor(
         }
     }
 
+    fun saveCoverImage(filePath: String, base64Image: String) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                try {
+                    // Check if cover already exists
+                    val book = pdfBookDao.getBook(filePath)
+                    if (book?.coverPath != null && File(book.coverPath).exists()) {
+                        return@withContext
+                    }
+
+                    // Create covers directory
+                    val coversDir = File(context.filesDir, "pdf_covers")
+                    if (!coversDir.exists()) coversDir.mkdirs()
+
+                    // Generate unique filename
+                    val coverFileName = filePath.hashCode().toString() + ".png"
+                    val coverFile = File(coversDir, coverFileName)
+
+                    // Decode base64 and save
+                    val imageBytes = android.util.Base64.decode(base64Image, android.util.Base64.DEFAULT)
+                    coverFile.writeBytes(imageBytes)
+
+                    // Update database
+                    pdfBookDao.updateCoverPath(filePath, coverFile.absolutePath)
+                    Log.d(TAG, "Cover saved: ${coverFile.absolutePath}")
+                } catch (e: Exception) {
+                    Log.e(TAG, "Failed to save cover image", e)
+                }
+            }
+        }
+    }
+
     override fun onCleared() {
         super.onCleared()
         tts?.stop()
@@ -118,3 +150,4 @@ class PdfViewerViewModel @Inject constructor(
         tts = null
     }
 }
+

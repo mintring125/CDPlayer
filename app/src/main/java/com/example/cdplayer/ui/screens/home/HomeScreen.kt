@@ -84,6 +84,7 @@ import com.example.cdplayer.ui.components.FolderPickerDialog
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material.icons.filled.GroupWork
 import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Edit
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -107,6 +108,8 @@ fun HomeScreen(
     var showAlbumNameDialog by remember { mutableStateOf(false) }
     var newAlbumName by remember { mutableStateOf("") }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
+    var showRenameAlbumDialog by remember { mutableStateOf(false) }
+    var renameAlbumName by remember { mutableStateOf("") }
 
     Box(modifier = Modifier.fillMaxSize()) {
         Scaffold(
@@ -306,6 +309,23 @@ fun HomeScreen(
                                     )
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("앨범으로 묶기")
+                                }
+                                TextButton(
+                                    onClick = {
+                                        // Get the album name from the first selected track
+                                        val selectedTracks = allAudiobooks.filter { it.id in audiobookSelectionState.selectedIds }
+                                        val albumName = selectedTracks.firstOrNull()?.album ?: ""
+                                        renameAlbumName = albumName
+                                        showRenameAlbumDialog = true
+                                    }
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Edit,
+                                        contentDescription = null,
+                                        modifier = Modifier.size(18.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(4.dp))
+                                    Text("이름 변경")
                                 }
                                 TextButton(
                                     onClick = { showDeleteConfirmDialog = true }
@@ -531,8 +551,56 @@ fun HomeScreen(
                 }
             )
         }
+
+        // Rename album dialog
+        if (showRenameAlbumDialog) {
+            AlertDialog(
+                onDismissRequest = { 
+                    showRenameAlbumDialog = false
+                },
+                title = { Text("앨범 이름 변경") },
+                text = {
+                    Column {
+                        Text(
+                            text = "${audiobookSelectionState.selectedIds.size}개 트랙 선택됨",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(16.dp))
+                        OutlinedTextField(
+                            value = renameAlbumName,
+                            onValueChange = { renameAlbumName = it },
+                            label = { Text("새 앨범 이름") },
+                            singleLine = true,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (renameAlbumName.isNotBlank()) {
+                                viewModel.renameSelectedAudiobooks(renameAlbumName.trim())
+                                showRenameAlbumDialog = false
+                            }
+                        },
+                        enabled = renameAlbumName.isNotBlank()
+                    ) {
+                        Text("변경")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { 
+                        showRenameAlbumDialog = false
+                    }) {
+                        Text("취소")
+                    }
+                }
+            )
+        }
     }
 }
+
 
 @Composable
 fun SectionHeader(

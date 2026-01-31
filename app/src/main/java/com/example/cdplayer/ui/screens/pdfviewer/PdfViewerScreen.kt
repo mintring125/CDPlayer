@@ -169,4 +169,10 @@ private class PdfBridge(
     fun getTheme(): String {
         return "dark"
     }
+
+    @JavascriptInterface
+    fun saveCover(base64Image: String) {
+        viewModel.saveCoverImage(filePath, base64Image)
+    }
 }
+
