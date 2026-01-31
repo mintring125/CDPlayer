@@ -221,4 +221,66 @@ class Id3TagReader @Inject constructor(
         val parts = trackStr.split("/")
         return parts[0].trim().toIntOrNull()
     }
+
+    fun findExternalCoverArt(audioFilePath: String): String? {
+        return try {
+            val audioFile = File(audioFilePath)
+            val parentDir = audioFile.parentFile ?: return null
+            
+            // 검색할 파일명 우선순위
+            val coverNames = listOf(
+                "cover.jpg", "cover.jpeg", "cover.png",
+                "album.jpg", "album.jpeg", "album.png",
+                "folder.jpg", "folder.jpeg", "folder.png",
+                "front.jpg", "front.jpeg", "front.png"
+            )
+
+            // 1. 일반적인 이름의 파일 검색
+            for (name in coverNames) {
+                val coverFile = File(parentDir, name)
+                if (coverFile.exists()) {
+                    return coverFile.absolutePath
+                }
+                
+                // 대소문자 구분 없이 검색 (File.exists()는 대소문자 구분함)
+                val matchingFile = parentDir.listFiles()?.find { 
+                    it.name.equals(name, ignoreCase = true) 
+                }
+                if (matchingFile != null) {
+                    return matchingFile.absolutePath
+                }
+            }
+            
+            // 2. 폴더 내의 이미지 파일 검색 (표준 이름이 없는 경우)
+            // 이미지가 하나만 있거나, 혹은 가장 큰 이미지 파일을 선택
+            val imageFiles = parentDir.listFiles { file ->
+                val name = file.name.lowercase()
+                file.isFile && (name.endsWith(".jpg") || name.endsWith(".jpeg") || name.endsWith(".png"))
+            }
+
+            if (!imageFiles.isNullOrEmpty()) {
+                // 이미지가 하나뿐이면 그것을 사용
+                if (imageFiles.size == 1) {
+                    return imageFiles[0].absolutePath
+                }
+                
+                // 여러 개라면, 이름에 "cover", "album", "front" 등이 포함된 것 우선
+                val bestMatch = imageFiles.find { file -> 
+                    val name = file.name.lowercase()
+                    name.contains("cover") || name.contains("album") || name.contains("front")
+                }
+                if (bestMatch != null) return bestMatch.absolutePath
+                
+                // 그래도 없으면, 가장 파일 크기가 큰 이미지를 사용 (고화질 커버일 확률 높음)
+                return imageFiles.maxByOrNull { it.length() }?.absolutePath
+            }
+            
+            null
+        } catch (e: Exception) {
+            e.printStackTrace()
+            null
+        }
+    }
 }
+
+

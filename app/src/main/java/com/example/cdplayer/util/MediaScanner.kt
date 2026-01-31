@@ -147,10 +147,12 @@ class MediaScanner @Inject constructor(
                     albumId
                 ).toString()
 
-                // 내장 앨범 아트가 있으면 추출
+                // 내장 앨범 아트가 있으면 추출, 없으면 외부 파일 검색
                 var coverArtPath: String? = null
                 if (metadata?.hasEmbeddedArt == true) {
                     coverArtPath = id3TagReader.saveEmbeddedArtToFile(path, id)
+                } else {
+                    coverArtPath = id3TagReader.findExternalCoverArt(path)
                 }
 
                 val audioFile = AudioFile(
@@ -225,7 +227,13 @@ class MediaScanner @Inject constructor(
             duration = duration,
             path = path,
             type = audioType,
-            coverArtPath = null,
+            coverArtPath = if (metadata?.hasEmbeddedArt == true) {
+                // 임시 ID (0)를 사용하여 저장 시도. 단, 파일명 충돌 주의 필요.
+                // 여기서는 single scan이므로 hashcode 등을 이용하거나 findExternalCoverArt 우선 시도 가능
+                id3TagReader.findExternalCoverArt(path)
+            } else {
+                id3TagReader.findExternalCoverArt(path)
+            },
             coverArtUri = null,
             lastPlayedPosition = 0,
             lastPlayedAt = null,

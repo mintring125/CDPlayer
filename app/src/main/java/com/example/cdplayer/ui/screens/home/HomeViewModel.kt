@@ -71,13 +71,16 @@ class HomeViewModel @Inject constructor(
         .map { audiobooks ->
             audiobooks.groupBy { it.album ?: "알 수 없는 앨범" }
                 .map { (albumName, tracks) ->
-                    val firstTrack = tracks.firstOrNull()
+                    val tracksSorted = tracks.sortedBy { it.trackNumber ?: Int.MAX_VALUE }
+                    // 앨범 내의 트랙 중 커버 이미지가 있는 첫 번째 트랙을 찾음
+                    val trackWithCover = tracksSorted.find { !it.coverArtPath.isNullOrBlank() || !it.coverArtUri.isNullOrBlank() }
+                    
                     AudiobookAlbum(
                         albumName = albumName,
-                        coverArtPath = firstTrack?.coverArtPath,
-                        coverArtUri = firstTrack?.coverArtUri,
+                        coverArtPath = trackWithCover?.coverArtPath,
+                        coverArtUri = trackWithCover?.coverArtUri,
                         trackCount = tracks.size,
-                        tracks = tracks.sortedBy { it.trackNumber ?: Int.MAX_VALUE }
+                        tracks = tracksSorted
                     )
                 }
                 .sortedBy { it.albumName }
