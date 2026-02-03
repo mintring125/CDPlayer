@@ -1,5 +1,8 @@
 package com.example.cdplayer.ui.components
 
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -9,6 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Forward10
 import androidx.compose.material.icons.filled.Pause
@@ -28,13 +32,16 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.unit.dp
@@ -64,9 +71,14 @@ fun PlaybackControls(
 ) {
     var sliderPosition by remember(currentPosition) { mutableFloatStateOf(currentPosition.toFloat()) }
     var isDragging by remember { mutableFloatStateOf(0f) }
+    var nearbyChapter by remember { mutableStateOf<Chapter?>(null) }
+    // 페이드아웃 애니메이션 중 표시할 챕터 유지
+    var lastShownChapter by remember { mutableStateOf<Chapter?>(null) }
+    if (nearbyChapter != null) lastShownChapter = nearbyChapter
 
     val maxDuration = duration.toFloat().coerceAtLeast(1f)
     val snapThreshold = maxDuration * 0.015f
+    val chapterDisplayThreshold = maxDuration * 0.03f
 
     Column(
         modifier = modifier.fillMaxWidth(),
@@ -80,6 +92,8 @@ fun PlaybackControls(
         ) {
             val bookmarkColor = MaterialTheme.colorScheme.tertiary
             val chapterColor = MaterialTheme.colorScheme.secondary
+
+            val showChapterTooltip = nearbyChapter != null && isDragging > 0
 
             Box(modifier = Modifier.fillMaxWidth()) {
                 Slider(
@@ -101,10 +115,16 @@ fun PlaybackControls(
                             value
                         }
                         isDragging = snapped
+
+                        // 드래그 위치 근처의 챕터 감지
+                        nearbyChapter = chapters
+                            .minByOrNull { abs(it.startTimeMs.toFloat() - snapped) }
+                            ?.takeIf { abs(it.startTimeMs.toFloat() - snapped) <= chapterDisplayThreshold }
                     },
                     onValueChangeFinished = {
                         onSeek(isDragging.toLong())
                         isDragging = 0f
+                        nearbyChapter = null
                     },
                     valueRange = 0f..maxDuration,
                     colors = SliderDefaults.colors(
@@ -152,6 +172,40 @@ fun PlaybackControls(
                                     color = bookmarkColor,
                                     radius = markerRadius,
                                     center = Offset(x, centerY)
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // 챕터 제목 툴팁 (드래그 중 챕터 마커 근처일 때 표시, 레이아웃에 영향 없음)
+                androidx.compose.animation.AnimatedVisibility(
+                    visible = showChapterTooltip,
+                    enter = fadeIn(),
+                    exit = fadeOut(),
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                ) {
+                    val chapter = nearbyChapter ?: lastShownChapter
+                    if (chapter != null) {
+                        val fraction = chapter.startTimeMs.toFloat() / maxDuration
+                        val bias = (fraction * 2f - 1f).coerceIn(-1f, 1f)
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 10.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(4.dp),
+                                color = MaterialTheme.colorScheme.inverseSurface,
+                                modifier = Modifier.align(BiasAlignment(bias, 0f))
+                            ) {
+                                Text(
+                                    text = chapter.title,
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.inverseOnSurface,
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                                 )
                             }
                         }
