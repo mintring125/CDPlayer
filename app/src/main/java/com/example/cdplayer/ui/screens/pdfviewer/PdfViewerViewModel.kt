@@ -121,6 +121,33 @@ class PdfViewerViewModel @Inject constructor(
         }
     }
 
+    fun saveRating(filePath: String, rating: Float) {
+        viewModelScope.launch {
+            withContext(Dispatchers.IO) {
+                val book = pdfBookDao.getBook(filePath)
+                if (book != null) {
+                    pdfBookDao.updateRating(filePath, rating)
+                } else {
+                    // Create book entry if not exists
+                    val fileName = File(filePath).nameWithoutExtension
+                    pdfBookDao.upsert(
+                        PdfBookEntity(
+                            filePath = filePath,
+                            fileName = fileName,
+                            rating = rating
+                        )
+                    )
+                }
+            }
+        }
+    }
+
+    suspend fun loadRating(filePath: String): Float {
+        return withContext(Dispatchers.IO) {
+            pdfBookDao.getRating(filePath) ?: 0f
+        }
+    }
+
     fun saveCoverImage(filePath: String, base64Image: String) {
         viewModelScope.launch {
             withContext(Dispatchers.IO) {

@@ -886,6 +886,153 @@
       background: #5a7;
       color: #fff;
     }
+
+    /* Rating Modal */
+    #ratingOverlay {
+      position: absolute;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 300;
+      display: none;
+      align-items: center;
+      justify-content: center;
+    }
+
+    #ratingOverlay.active {
+      display: flex;
+    }
+
+    #ratingModal {
+      background: #2a2a2a;
+      border-radius: 16px;
+      padding: 24px 32px;
+      text-align: center;
+      max-width: 320px;
+      width: 90%;
+      animation: scaleIn 0.2s ease-out;
+    }
+
+    @keyframes scaleIn {
+      from {
+        opacity: 0;
+        transform: scale(0.9);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .rating-title {
+      font-size: 18px;
+      font-weight: 600;
+      color: #e0e0e0;
+      margin-bottom: 8px;
+    }
+
+    .rating-subtitle {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 20px;
+    }
+
+    .rating-stars {
+      display: flex;
+      justify-content: center;
+      gap: 4px;
+      margin-bottom: 16px;
+      touch-action: none;
+    }
+
+    .rating-star {
+      position: relative;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      transition: transform 0.1s;
+    }
+
+    .rating-star:active {
+      transform: scale(0.95);
+    }
+
+    .rating-star svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .rating-star .star-empty {
+      fill: #444;
+    }
+
+    .rating-star .star-half {
+      fill: #ffc107;
+      clip-path: inset(0 50% 0 0);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+
+    .rating-star .star-full {
+      fill: #ffc107;
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      opacity: 0;
+    }
+
+    .rating-star.half .star-half {
+      opacity: 1;
+    }
+
+    .rating-star.full .star-full {
+      opacity: 1;
+    }
+
+    .rating-value {
+      font-size: 24px;
+      font-weight: 700;
+      color: #ffc107;
+      margin-bottom: 20px;
+    }
+
+    .rating-buttons {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .rating-btn {
+      padding: 10px 24px;
+      font-size: 14px;
+      border-radius: 8px;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .rating-btn.cancel {
+      background: #444;
+      color: #ccc;
+    }
+
+    .rating-btn.cancel:hover {
+      background: #555;
+    }
+
+    .rating-btn.save {
+      background: #5a7;
+      color: #fff;
+    }
+
+    .rating-btn.save:hover {
+      background: #6b8;
+    }
   </style>
 </head>
 
@@ -973,6 +1120,46 @@
             <div class="spinner"></div>
             <span>Gemini가 페이지를 분석 중...</span>
           </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Rating Modal -->
+    <div id="ratingOverlay">
+      <div id="ratingModal">
+        <div class="rating-title">책을 다 읽으셨나요?</div>
+        <div class="rating-subtitle">별점을 남겨주세요</div>
+        <div class="rating-stars" id="ratingStars">
+          <div class="rating-star" data-index="1">
+            <svg class="star-empty" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-half" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-full" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </div>
+          <div class="rating-star" data-index="2">
+            <svg class="star-empty" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-half" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-full" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </div>
+          <div class="rating-star" data-index="3">
+            <svg class="star-empty" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-half" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-full" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </div>
+          <div class="rating-star" data-index="4">
+            <svg class="star-empty" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-half" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-full" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </div>
+          <div class="rating-star" data-index="5">
+            <svg class="star-empty" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-half" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+            <svg class="star-full" viewBox="0 0 24 24"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>
+          </div>
+        </div>
+        <div class="rating-value" id="ratingValue">0.0</div>
+        <div class="rating-buttons">
+          <button class="rating-btn cancel" id="ratingCancel">취소</button>
+          <button class="rating-btn save" id="ratingSave">저장</button>
         </div>
       </div>
     </div>
@@ -1470,6 +1657,9 @@
       const lastDisplayed = displayPages[displayPages.length - 1];
       if (lastDisplayed < totalPages) {
         goToPage(lastDisplayed + 1);
+      } else {
+        // Last page - show rating dialog
+        showRatingDialog();
       }
     }
 
@@ -2179,6 +2369,112 @@ JSON 배열로만 응답하세요. 다른 텍스트 없이 JSON만:
       }
       return html;
     }
+
+    // ==================== Rating System ====================
+
+    const ratingOverlay = document.getElementById('ratingOverlay');
+    const ratingStars = document.getElementById('ratingStars');
+    const ratingValue = document.getElementById('ratingValue');
+    const ratingCancel = document.getElementById('ratingCancel');
+    const ratingSave = document.getElementById('ratingSave');
+
+    let currentRating = 0;
+
+    function showRatingDialog() {
+      // Load existing rating from Android bridge
+      if (isAndroid) {
+        try {
+          currentRating = PdfBridge.loadRating() || 0;
+        } catch (e) {
+          currentRating = 0;
+        }
+      } else {
+        // For web: use localStorage
+        const key = `rating_${currentFileName}`;
+        currentRating = parseFloat(localStorage.getItem(key)) || 0;
+      }
+
+      updateStarsDisplay(currentRating);
+      ratingValue.textContent = currentRating.toFixed(1);
+      ratingOverlay.classList.add('active');
+    }
+
+    function hideRatingDialog() {
+      ratingOverlay.classList.remove('active');
+    }
+
+    function updateStarsDisplay(rating) {
+      const stars = ratingStars.querySelectorAll('.rating-star');
+      stars.forEach((star, index) => {
+        const starIndex = index + 1;
+        star.classList.remove('half', 'full');
+
+        if (rating >= starIndex) {
+          star.classList.add('full');
+        } else if (rating >= starIndex - 0.5) {
+          star.classList.add('half');
+        }
+      });
+    }
+
+    // Handle star clicks with half-star support
+    ratingStars.addEventListener('click', (e) => {
+      const star = e.target.closest('.rating-star');
+      if (!star) return;
+
+      const rect = star.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const isLeftHalf = x < rect.width / 2;
+      const starIndex = parseInt(star.dataset.index);
+
+      currentRating = isLeftHalf ? starIndex - 0.5 : starIndex;
+      updateStarsDisplay(currentRating);
+      ratingValue.textContent = currentRating.toFixed(1);
+    });
+
+    // Touch support for stars
+    ratingStars.addEventListener('touchstart', handleStarTouch, { passive: true });
+    ratingStars.addEventListener('touchmove', handleStarTouch, { passive: true });
+
+    function handleStarTouch(e) {
+      const touch = e.touches[0];
+      const star = document.elementFromPoint(touch.clientX, touch.clientY)?.closest('.rating-star');
+      if (!star) return;
+
+      const rect = star.getBoundingClientRect();
+      const x = touch.clientX - rect.left;
+      const isLeftHalf = x < rect.width / 2;
+      const starIndex = parseInt(star.dataset.index);
+
+      currentRating = isLeftHalf ? starIndex - 0.5 : starIndex;
+      updateStarsDisplay(currentRating);
+      ratingValue.textContent = currentRating.toFixed(1);
+    }
+
+    ratingCancel.addEventListener('click', hideRatingDialog);
+
+    ratingSave.addEventListener('click', () => {
+      // Save rating
+      if (isAndroid) {
+        try {
+          PdfBridge.saveRating(currentRating);
+        } catch (e) {
+          console.error('Failed to save rating:', e);
+        }
+      } else {
+        // For web: use localStorage
+        const key = `rating_${currentFileName}`;
+        localStorage.setItem(key, currentRating.toString());
+      }
+      hideRatingDialog();
+    });
+
+    // Close on overlay background click
+    ratingOverlay.addEventListener('click', (e) => {
+      if (e.target === ratingOverlay) {
+        hideRatingDialog();
+      }
+    });
 
 
   </script>

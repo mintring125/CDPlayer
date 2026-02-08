@@ -27,7 +27,9 @@ import javax.inject.Inject
 data class BooksUiState(
     val isScanning: Boolean = false,
     val scannedFiles: List<PdfFileInfo> = emptyList(),
-    val error: String? = null
+    val error: String? = null,
+    val isSelectionMode: Boolean = false,
+    val selectedFiles: Set<String> = emptySet()
 )
 
 data class PdfFileInfo(
@@ -55,7 +57,14 @@ class BooksViewModel @Inject constructor(
     private val _isScanning = MutableStateFlow(false)
     private val _error = MutableStateFlow<String?>(null)
 
-    // 3. Database data (Source of Truth for metadata)
+    // 3. Selection mode
+    private val _isSelectionMode = MutableStateFlow(false)
+    val isSelectionMode: StateFlow<Boolean> = _isSelectionMode
+
+    private val _selectedFiles = MutableStateFlow<Set<String>>(emptySet())
+    val selectedFiles: StateFlow<Set<String>> = _selectedFiles
+
+    // 4. Database data (Source of Truth for metadata)
     val savedBooks = pdfBookDao.getAllBooks()
         .stateIn(
             scope = viewModelScope,
@@ -184,6 +193,79 @@ class BooksViewModel @Inject constructor(
         }
     }
     
+    // Selection mode functions
+    fun enterSelectionMode(filePath: String) {
+        _isSelectionMode.value = true
+        _selectedFiles.value = setOf(filePath)
+    }
+
+    fun exitSelectionMode() {
+        _isSelectionMode.value = false
+        _selectedFiles.value = emptySet()
+    }
+
+    fun toggleSelection(filePath: String) {
+        val current = _selectedFiles.value
+        _selectedFiles.value = if (current.contains(filePath)) {
+            current - filePath
+        } else {
+            current + filePath
+        }
+        // Exit selection mode if no files selected
+        if (_selectedFiles.value.isEmpty()) {
+            _isSelectionMode.value = false
+        }
+    }
+
+    fun deleteSelectedFiles() {
+        viewModelScope.launch {
+            val filesToDelete = _selectedFiles.value.toList()
+            for (filePath in filesToDelete) {
+                // Delete from database
+                pdfBookDao.delete(filePath)
+                // Delete actual file
+                withContext(Dispatchers.IO) {
+                    try {
+                        File(filePath).delete()
+                    } catch (e: Exception) {
+                        Log.e("BooksViewModel", "Failed to delete file: $filePath", e)
+                    }
+                }
+            }
+            exitSelectionMode()
+            scanPdfFiles() // Refresh file list
+        }
+    }
+
+    fun renameSelectedFile(newName: String) {
+        viewModelScope.launch {
+            val filePath = _selectedFiles.value.firstOrNull() ?: return@launch
+            withContext(Dispatchers.IO) {
+                try {
+                    val oldFile = File(filePath)
+                    val newFile = File(oldFile.parent, "$newName.pdf")
+
+                    if (oldFile.renameTo(newFile)) {
+                        // Update database with new path
+                        val book = pdfBookDao.getBook(filePath)
+                        if (book != null) {
+                            pdfBookDao.delete(filePath)
+                            pdfBookDao.upsert(book.copy(
+                                filePath = newFile.absolutePath,
+                                fileName = newName
+                            ))
+                        }
+                    }
+                } catch (e: Exception) {
+                    Log.e("BooksViewModel", "Failed to rename file", e)
+                }
+                Unit
+            }
+            exitSelectionMode()
+            scanPdfFiles() // Refresh file list
+        }
+    }
+
     private suspend fun generateCoverImage(filePath: String) {
         withContext(Dispatchers.IO) {
             try {

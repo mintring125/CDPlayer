@@ -7,6 +7,7 @@ import com.example.cdplayer.data.local.dao.AudioFileDao
 import com.example.cdplayer.data.local.dao.BookmarkDao
 import com.example.cdplayer.data.local.dao.PdfBookDao
 import com.example.cdplayer.data.local.dao.PlaylistDao
+import com.example.cdplayer.data.local.dao.StampDao
 import com.example.cdplayer.data.remote.api.CoverArtArchiveApi
 import com.example.cdplayer.data.remote.api.DictionaryApi
 import com.example.cdplayer.data.remote.api.GoogleTranslateApi
@@ -39,8 +40,7 @@ object AppModule {
             AppDatabase::class.java,
             AppDatabase.DATABASE_NAME
         )
-            .addMigrations(AppDatabase.MIGRATION_3_4)
-            .fallbackToDestructiveMigration()
+            .addMigrations(AppDatabase.MIGRATION_3_4, AppDatabase.MIGRATION_4_5, AppDatabase.MIGRATION_5_6)
             .build()
     }
 
@@ -66,6 +66,12 @@ object AppModule {
     @Singleton
     fun providePdfBookDao(database: AppDatabase): PdfBookDao {
         return database.pdfBookDao()
+    }
+
+    @Provides
+    @Singleton
+    fun provideStampDao(database: AppDatabase): StampDao {
+        return database.stampDao()
     }
 
     // Network

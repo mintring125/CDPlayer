@@ -12,6 +12,7 @@ data class PdfBookEntity(
     val totalPages: Int = 0,
     val lastReadAt: Long = System.currentTimeMillis(),
     val isFavorite: Boolean = false,
-    val coverPath: String? = null
+    val coverPath: String? = null,
+    val rating: Float = 0f  // 0.5 단위, 최대 5.0
 )
 

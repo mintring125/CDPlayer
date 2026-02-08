@@ -33,5 +33,11 @@ interface PdfBookDao {
 
     @Query("DELETE FROM pdf_books WHERE filePath = :filePath")
     suspend fun delete(filePath: String)
+
+    @Query("UPDATE pdf_books SET rating = :rating WHERE filePath = :filePath")
+    suspend fun updateRating(filePath: String, rating: Float)
+
+    @Query("SELECT rating FROM pdf_books WHERE filePath = :filePath")
+    suspend fun getRating(filePath: String): Float?
 }
 

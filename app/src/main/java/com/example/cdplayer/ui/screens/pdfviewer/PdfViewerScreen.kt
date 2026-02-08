@@ -174,5 +174,24 @@ private class PdfBridge(
     fun saveCover(base64Image: String) {
         viewModel.saveCoverImage(filePath, base64Image)
     }
+
+    @JavascriptInterface
+    fun saveRating(rating: Float) {
+        viewModel.saveRating(filePath, rating)
+    }
+
+    @JavascriptInterface
+    fun loadRating(): Float {
+        var result = 0f
+        val latch = java.util.concurrent.CountDownLatch(1)
+        coroutineScope.launch {
+            result = viewModel.loadRating(filePath)
+            latch.countDown()
+        }
+        try {
+            latch.await(2, java.util.concurrent.TimeUnit.SECONDS)
+        } catch (_: Exception) {}
+        return result
+    }
 }
 

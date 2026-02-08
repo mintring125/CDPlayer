@@ -12,12 +12,12 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.LibraryMusic
 import androidx.compose.material.icons.filled.MenuBook
-import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Star
+import androidx.compose.material.icons.outlined.Star
 import androidx.compose.material.icons.outlined.Home
 import androidx.compose.material.icons.outlined.LibraryMusic
 import androidx.compose.material.icons.outlined.MenuBook
-import androidx.compose.material.icons.outlined.Search
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material3.Icon
 import androidx.compose.material3.NavigationBar
@@ -48,6 +48,7 @@ import com.example.cdplayer.ui.screens.splash.SplashScreen
 import com.example.cdplayer.ui.screens.edit.EditMetadataScreen
 import com.example.cdplayer.ui.screens.books.BooksScreen
 import com.example.cdplayer.ui.screens.pdfviewer.PdfViewerScreen
+import com.example.cdplayer.ui.screens.stamp.StampScreen
 import com.example.cdplayer.ui.components.MiniPlayer
 
 data class BottomNavItem(
@@ -77,10 +78,10 @@ val bottomNavItems = listOf(
         unselectedIcon = Icons.Outlined.MenuBook
     ),
     BottomNavItem(
-        route = Screen.Search.route,
-        title = "검색",
-        selectedIcon = Icons.Filled.Search,
-        unselectedIcon = Icons.Outlined.Search
+        route = Screen.Stamp.route,
+        title = "스탬프",
+        selectedIcon = Icons.Filled.Star,
+        unselectedIcon = Icons.Outlined.Star
     ),
     BottomNavItem(
         route = Screen.Settings.route,
@@ -102,7 +103,7 @@ fun CDPlayerNavHost(
         Screen.Home.route,
         Screen.Library.route,
         Screen.Books.route,
-        Screen.Search.route,
+        Screen.Stamp.route,
         Screen.Settings.route
     )
 
@@ -245,6 +246,10 @@ fun CDPlayerNavHost(
                             navController.navigate(Screen.PdfViewer.createRoute(filePath))
                         }
                     )
+                }
+
+                composable(Screen.Stamp.route) {
+                    StampScreen()
                 }
 
                 composable(
